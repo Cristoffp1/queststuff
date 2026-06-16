@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#7C3AED">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Fitness RPG">
+  <meta name="description" content="Gamified home workout app in RPG style">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="favicon.ico">
+  <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+  <title>Fitness RPG</title>
+</head>
+<body>
+  <!-- Splash Screen -->
+  <div id="splash">
+    <div class="splash-icon">⚔️</div>
+    <div class="splash-title">Fitness RPG</div>
+    <div class="splash-sub">Carregando aventura...</div>
+    <div class="splash-bar"><div class="splash-fill"></div></div>
+  </div>
+
+  <div id="app" style="display:none">
+    <!-- Offline Bar -->
+    <div id="offline-bar">📡 Você está offline — o app continua funcionando!</div>
+
+    <!-- Main Content -->
+    <div id="content"></div>
+
+    <!-- Bottom Nav -->
+    <nav id="nav">
+      <button class="nav-btn active" data-tab="home" onclick="switchTab('home')">
+        <span class="nav-icon">🏠</span>
+        <span class="nav-label">Home</span>
+      </button>
+      <button class="nav-btn" data-tab="missions" onclick="switchTab('missions')">
+        <span class="nav-icon">⚔️</span>
+        <span class="nav-label">Missões</span>
+      </button>
+      <button class="nav-btn" data-tab="achievements" onclick="switchTab('achievements')">
+        <span class="nav-icon">🏆</span>
+        <span class="nav-label">Conquistas</span>
+      </button>
+      <button class="nav-btn" data-tab="ranking" onclick="switchTab('ranking')">
+        <span class="nav-icon">📊</span>
+        <span class="nav-label">Ranking</span>
+      </button>
+      <button class="nav-btn" data-tab="profile" onclick="switchTab('profile')">
+        <span class="nav-icon">👤</span>
+        <span class="nav-label">Perfil</span>
+      </button>
+    </nav>
+
+    <!-- Mission Active Screen -->
+    <div id="mission-screen">
+      <div id="mission-content"></div>
+    </div>
+
+    <!-- Rest Screen -->
+    <div id="rest-screen">
+      <div class="rest-inner">
+        <div class="rest-title">💪 Descanse!</div>
+        <div class="rest-subtitle">Próxima série em breve...</div>
+        <svg viewBox="0 0 120 120" class="rest-ring">
+          <circle cx="60" cy="60" r="52" fill="none" stroke="#1E2040" stroke-width="10"/>
+          <circle id="rest-progress" cx="60" cy="60" r="52" fill="none" stroke="#10B981" stroke-width="10"
+            stroke-dasharray="326.7" stroke-dashoffset="0" stroke-linecap="round"
+            transform="rotate(-90 60 60)"/>
+        </svg>
+        <div id="rest-count" class="rest-count">30</div>
+        <button class="btn-skip" onclick="skipRest()">Pular Descanso ⚡</button>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast"></div>
+
+    <!-- Achievement Flash -->
+    <div id="ach-flash">
+      <div class="ach-flash-inner">
+        <span id="ach-flash-icon"></span>
+        <div>
+          <div class="ach-flash-label">CONQUISTA DESBLOQUEADA!</div>
+          <div id="ach-flash-title"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Level Up Overlay -->
+    <div id="levelup-overlay">
+      <div class="levelup-inner">
+        <div class="levelup-star">⭐</div>
+        <div class="levelup-title">LEVEL UP!</div>
+        <div id="levelup-num" class="levelup-num"></div>
+        <div class="levelup-sub">Você ficou mais forte!</div>
+        <button onclick="closeLevelUp()" class="btn-primary">Continuar ⚔️</button>
+      </div>
+    </div>
+
+    <!-- Particles -->
+    <div id="particles"></div>
+  </div>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
