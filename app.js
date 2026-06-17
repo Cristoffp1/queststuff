@@ -336,8 +336,7 @@ function openMissionScreen() {
         </div>
       </div>
       <div class="figure-container">
-  <img src="images/${ex.pose}.png" class="exercise-image">
-</div>
+  <img src="pushup.png" class="exercise-image">
       <div class="muscle-tags">
         ${ex.muscles.map(m => `<span class="muscle-tag" style="background:${ex.mColor}22;color:${ex.mColor}">${m}</span>`).join('')}
       </div>
@@ -988,3 +987,4 @@ function init() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+ntLoaded', init);
