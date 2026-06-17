@@ -335,8 +335,7 @@ function openMissionScreen() {
           <div class="mission-screen-series">Série ${currentSet} de ${ex.sets}</div>
         </div>
       </div>
-      <div class="figure-container">
-  <img src="pushup.png" class="exercise-image"</div>
+      <img src="${ex.pose}.png" class="exercise-image">
       <div class="muscle-tags">
         ${ex.muscles.map(m => `<span class="muscle-tag" style="background:${ex.mColor}22;color:${ex.mColor}">${m}</span>`).join('')}
       </div>
