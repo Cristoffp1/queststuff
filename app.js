@@ -336,7 +336,7 @@ function openMissionScreen() {
         </div>
       </div>
       <div class="figure-container">
-  <img src="images/${ex.pose}.png" class="exercise-image">
+  <img src="${ex.pose}.png" class="exercise-image">
 </div>
       <div class="muscle-tags">
         ${ex.muscles.map(m => `<span class="muscle-tag" style="background:${ex.mColor}22;color:${ex.mColor}">${m}</span>`).join('')}
@@ -877,7 +877,7 @@ function renderRanking() {
       ${players.slice(0, 10).map((p, i) => {
         const pos = i + 1;
         const posClass = pos === 1 ? 'gold' : pos === 2 ? 'silver' : pos === 3 ? 'bronze' : '';
-        const medal = pos === 1 ? '🥇' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : `#${pos}`;
+        const medal = pos === 1 ? '🥇' : pos === 2 ? '??' : pos === 3 ? '🥉' : `#${pos}`;
         return `
           <div class="rank-item ${p.isMe ? 'is-me' : ''}">
             <div class="rank-pos ${posClass}">${medal}</div>
@@ -988,3 +988,4 @@ function init() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+, init);
