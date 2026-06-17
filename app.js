@@ -329,13 +329,15 @@ function openMissionScreen() {
   el.innerHTML = `
     <div style="padding-bottom:30px">
       <div class="mission-screen-header">
-        <button class="back-btn" onclick="closeMissionScreen()">←</button>
+        <button class="back-btn" onclick="closeMissionScreen()">X</button>
         <div>
           <div class="mission-screen-title">${ex.icon} ${ex.name}</div>
           <div class="mission-screen-series">Série ${currentSet} de ${ex.sets}</div>
         </div>
       </div>
-      <div class="figure-container">${svgFigure(ex.pose, ex.mColor)}</div>
+      <div class="figure-container">
+  <img src="images/${ex.pose}.png" class="exercise-image">
+</div>
       <div class="muscle-tags">
         ${ex.muscles.map(m => `<span class="muscle-tag" style="background:${ex.mColor}22;color:${ex.mColor}">${m}</span>`).join('')}
       </div>

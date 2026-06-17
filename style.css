@@ -516,3 +516,30 @@ button { cursor: pointer; font-family: var(--font); border: none; outline: none;
 
 /* ===== SVG Figures ===== */
 .figure-svg { filter: drop-shadow(0 0 8px rgba(124,58,237,0.3)); }
+/* Move o botão X para a direita e deixa redondo */
+.mission-screen-header {
+  display: flex;
+  flex-direction: row-reverse !important;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mission-screen-header .back-btn {
+  border-radius: 50% !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #fff !important;
+  border: none !important;
+  width: 36px;
+  height: 36px;
+  font-weight: bold;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.exercise-image {
+    width: 350px;
+    height: 350px;
+    object-fit: contain;
+}
