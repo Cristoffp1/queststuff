@@ -3,7 +3,10 @@
 // ===== SUPABASE CONFIG =====
 const SUPABASE_URL = 'https://flnzycipcdqtwcyujzqe.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZsbnp5Y2lwY2RxdHdjeXVqenFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MjA5MzcsImV4cCI6MjA5NzE5NjkzN30.plqw_CtlaJmChDlnkTfHN9MUPVn0IK7Ty_WfujM3ICo';
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// Usamos o "window.supabase" para acessar a biblioteca que veio do HTML
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabase = supabaseClient;
+
 // ===== EXERCISES DATA =====
 const EXERCISES = [
   {
