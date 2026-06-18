@@ -162,7 +162,6 @@ async function loadState() {
   // Roda as atualizações de tela do jogo
   checkDayReset();
   if (typeof render === 'function') render(); 
-  }
 }
 
 async function saveState() {
