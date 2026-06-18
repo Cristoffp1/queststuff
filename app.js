@@ -182,25 +182,22 @@ async function loadState(user) {
   try {
     if (!user) return;
 
-    // 1. Busca os dados estruturados na tabela 'profiles'
     let { data: profile, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', user.id)
       .single();
 
-    // Se o perfil não existir (código PGRST116), é o primeiro login do usuário!
     if (error && error.code === 'PGRST116') {
       const novoPerfil = {
         id: user.id,
         nome: user.email.split('@')[0],
-        xp: DEFAULT_STATE.xp || 0,
-        nivel: DEFAULT_STATE.nivel || 1,
-        moedas: DEFAULT_STATE.moedas || 0,
-        streak: DEFAULT_STATE.streak || 0
+        xp: 0,
+        nivel: 1,
+        moedas: 0,
+        streak: 0
       };
 
-      // Cria o perfil inicial na tabela 'profiles'
       const { error: insertError } = await supabase
         .from('profiles')
         .insert([novoPerfil]);
@@ -211,19 +208,17 @@ async function loadState(user) {
       throw error;
     }
 
-    // 2. Transfere os dados salvos no banco para as variáveis do jogo
     state.xp = profile.xp;
-    state.nivel = profile.nivel;
+    state.level = profile.nivel;
     state.moedas = profile.moedas;
     state.streak = profile.streak;
 
-    // Atualiza a tela do jogo
     checkDayReset();
     if (typeof render === 'function') render();
+    if (typeof renderTab === 'function') renderTab(currentTab);
 
   } catch (e) {
     console.error("Erro ao carregar dados do Supabase, usando local:", e);
-    // Fallback: se a internet falhar, tenta usar o localStorage
     const saved = localStorage.getItem('fitnessRPG_state');
     if (saved) state = { ...DEFAULT_STATE, ...JSON.parse(saved) };
   }
