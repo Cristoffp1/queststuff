@@ -5,9 +5,8 @@ const SUPABASE_URL = 'https://flnzycipcdqtwcyujzqe.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZsbnp5Y2lwY2RxdHdjeXVqenFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTgzNjU1NDIsImV4cCI6MjAzMzk0MTU0Mn0.eREuYdId0b8A-zN4y0_2_lRco96p_oW0v0vG0m3F6E4'; // Sua chave anônima
 
 // Inicializa o cliente do Supabase corretamente
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-window.supabase = supabase;
-
+// Inicializa o cliente do Supabase diretamente no objeto window
+window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ===== EXERCISES DATA =====
 const EXERCISES = [
