@@ -118,29 +118,43 @@ let state = { ...DEFAULT_STATE };
 async function loadState() {
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    
+
     if (user) {
-      // Se o usuário estiver logado, esconde a tela de login e puxa os dados do Supabase
+      // Remove a tela de login se o usuário estiver autenticado
       document.getElementById('auth-screen').style.display = 'none';
-      
-      const { data } = await supabase
+
+      // Busca o progresso do usuário
+      const { data, error } = await supabase
         .from('user_progress')
         .select('game_state')
         .eq('user_id', user.id)
-        .single();
-        
+        .maybeSingle(); // .maybeSingle() não quebra o código se não achar nada!
+
       if (data && data.game_state) {
+        // Se achou os dados, carrega misturando com o estado padrão por segurança
         state = { ...DEFAULT_STATE, ...data.game_state };
+      } else {
+        // Se o usuário é novo e não tem dados, inicia com o estado padrão
+        state = { ...DEFAULT_STATE };
+        // Cria o primeiro registro dele no banco para os próximos salvamentos
+        await saveState();
       }
     } else {
-      // Se não estiver logado, garante que a tela de login fique visível
+      // Se não estiver logado, mostra a tela de login
       document.getElementById('auth-screen').style.display = 'flex';
     }
   } catch (e) {
     console.error("Erro ao carregar dados do Supabase:", e);
+    // Como plano de contingência, tenta carregar do localStorage se o banco falhar
+    const saved = localStorage.getItem('fitnessRPG_state');
+    if (saved) state = { ...DEFAULT_STATE, ...JSON.parse(saved) };
   }
+  
+  // Garante que o jogo vai destravar e rodar independentemente de qualquer erro
   checkDayReset();
+  if (typeof render === 'function') render(); 
 }
+
 async function saveState() {
   try {
     const { data: { user } } = await supabase.auth.getUser();
