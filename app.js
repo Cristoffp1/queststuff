@@ -164,7 +164,7 @@ document.getElementById('btn-register')?.addEventListener('click', async () => {
     mostrarModalQuestStuff("Erro ao cadastrar: " + error.message);
   } else {
     // Chama o seu novo modal idêntico ao da foto!
-    mostrarModalQuestStuff("Cadastro realizado com sucesso! Divirta-se no Fitness RPG.");
+    mostrarModalQuestStuff("Cadastro realizado com sucesso! Divirta-se no Quest Stuff.");
   }
 });
 
