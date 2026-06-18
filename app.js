@@ -130,38 +130,39 @@ async function loadState() {
 
     if (user) {
       // Remove a tela de login se o usuário estiver autenticado
-      document.getElementById('auth-screen').style.display = 'none';
+      const authScreen = document.getElementById('auth-screen');
+      if (authScreen) authScreen.style.display = 'none';
 
       // Busca o progresso do usuário
-      const { data, error } = await supabase
+      const response = await supabase
         .from('user_progress')
         .select('game_state')
         .eq('user_id', user.id)
-        .maybeSingle(); // .maybeSingle() não quebra o código se não achar nada!
+        .maybeSingle();
 
-      if (data && data.game_state) {
-        // Se achou os dados, carrega misturando com o estado padrão por segurança
-        state = { ...DEFAULT_STATE, ...data.game_state };
+      // Verifica com segurança se a resposta e o game_state existem
+      if (response && response.data && response.data.game_state) {
+        state = { ...DEFAULT_STATE, ...response.data.game_state };
       } else {
-        // Se o usuário é novo e não tem dados, inicia com o estado padrão
+        // Se for um usuário novo (sem dados no banco ainda)
         state = { ...DEFAULT_STATE };
-        // Cria o primeiro registro dele no banco para os próximos salvamentos
-        await saveState();
+        await saveState(); // Cria o registro inicial dele no banco
       }
     } else {
       // Se não estiver logado, mostra a tela de login
-      document.getElementById('auth-screen').style.display = 'flex';
+      const authScreen = document.getElementById('auth-screen');
+      if (authScreen) authScreen.style.display = 'flex';
     }
   } catch (e) {
     console.error("Erro ao carregar dados do Supabase:", e);
-    // Como plano de contingência, tenta carregar do localStorage se o banco falhar
     const saved = localStorage.getItem('fitnessRPG_state');
     if (saved) state = { ...DEFAULT_STATE, ...JSON.parse(saved) };
   }
   
-  // Garante que o jogo vai destravar e rodar independentemente de qualquer erro
+  // Roda as atualizações de tela do jogo
   checkDayReset();
   if (typeof render === 'function') render(); 
+  }
 }
 
 async function saveState() {
