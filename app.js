@@ -227,20 +227,17 @@ async function loadState(user) {
 async function saveState() {
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    
-    // Sempre salva no localStorage por garantia/cópia local
     localStorage.setItem('fitnessRPG_state', JSON.stringify(state));
 
-    // Se tiver usuário logado, atualiza as colunas da tabela 'profiles'
     if (user) {
       await supabase
         .from('profiles')
         .upsert({
           id: user.id,
           xp: state.xp,
-          nivel: state.nivel,
-          moedas: state.moedas,
-          streak: state.streak
+          nivel: state.level,
+          moedas: state.moedas || 0,
+          streak: state.streak || 0
         });
     }
   } catch (e) {
