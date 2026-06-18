@@ -826,7 +826,7 @@ function renderHome() {
     <div class="home-header">
       <div>
         <div class="home-greeting">${greeting}, Guerreiro! 👋</div>
-        <div class="home-name">Fitness RPG</div>
+        <div class="home-name">Quest Stuff</div>
       </div>
       <div class="home-avatar">⚔️</div>
     </div>
