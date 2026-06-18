@@ -9,10 +9,6 @@ window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ===== EXERCISES DATA =====
 const EXERCISES = [
-
-
-// ===== EXERCISES DATA =====
-const EXERCISES = [
   {
     id: 'd1', name: 'Guerreiro das Flexões', icon: '💪',
     base: 12, max: 40, sets: 2, unit: 'flexões', type: 'reps', cat: 'força',
