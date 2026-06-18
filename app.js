@@ -1105,7 +1105,7 @@ function resetGame() {
 
 // ===== INIT =====
 function init() {
-  loadState();
+  // Chamada removida daqui, pois o supabase.auth.onAuthStateChange já cuida de chamar o loadState(session.user) automaticamente!
 
   // Register service worker
   if ('serviceWorker' in navigator) {
@@ -1127,24 +1127,27 @@ function init() {
   const app = document.getElementById('app');
 
   setTimeout(() => {
-    splash.classList.add('hidden');
-    app.style.display = 'flex';
+    if (splash) splash.classList.add('hidden');
+    if (app) app.style.display = 'flex';
     renderTab('home');
-    setTimeout(() => splash.style.display = 'none', 600);
+    setTimeout(() => { if (splash) splash.style.display = 'none'; }, 600);
   }, 1800);
 }
 
 document.addEventListener('DOMContentLoaded', init);
-// ===== FUNÇÕES DE AUTENTICAÇÃO =====
+
+// ===== FUNÇÕES DE AUTENTICAÇÃO CORRIGIDAS =====
 async function handleLogin() {
   const email = document.getElementById('auth-email').value;
   const password = document.getElementById('auth-password').value;
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   
   if (error) {
     alert('Erro ao entrar: ' + error.message);
-  } else {
-    window.location.reload(); 
+  } else if (data?.user) {
+    // Carrega os dados direto antes de qualquer coisa para firmar o login
+    await loadState(data.user);
+    renderTab('home');
   }
 }
 
@@ -1156,9 +1159,10 @@ async function handleSignUp() {
   if (error) {
     alert('Erro ao cadastrar: ' + error.message);
   } else {
-    alert('Conta criada com sucesso! Faça login para começar a jogar.');
+    mostrarModalQuestStuff('Conta criada com sucesso! Faça login para começar a jogar.');
   }
 }
+
 // Função para mostrar o modal estilo Quest Stuff
 function mostrarModalQuestStuff(mensagem) {
   const modal = document.getElementById('custom-modal');
@@ -1166,7 +1170,7 @@ function mostrarModalQuestStuff(mensagem) {
   const modalCloseBtn = document.getElementById('modal-close-btn');
 
   if (modal && modalMessage) {
-    modalMessage.innerText = mensagem;
+    modalMessage.innerText = mensaje;
     modal.style.display = 'flex'; // Abre o modal centralizado
 
     // Configura o botão para fechar quando for clicado
