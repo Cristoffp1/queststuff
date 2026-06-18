@@ -159,8 +159,13 @@ document.getElementById('btn-register')?.addEventListener('click', async () => {
   const email = document.getElementById('auth-email').value;
   const password = document.getElementById('auth-password').value;
   const { error } = await supabase.auth.signUp({ email, password });
-  if (error) alert("Erro ao cadastrar: " + error.message);
-  else alert("Cadastro realizado! Verifique seu email se o Supabase exigir confirmação.");
+  
+  if (error) {
+    mostrarModalQuestStuff("Erro ao cadastrar: " + error.message);
+  } else {
+    // Chama o seu novo modal idêntico ao da foto!
+    mostrarModalQuestStuff("Cadastro realizado com sucesso! Divirta-se no Fitness RPG.");
+  }
 });
 
 document.getElementById('btn-logout')?.addEventListener('click', async () => {
