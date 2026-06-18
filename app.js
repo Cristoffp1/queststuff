@@ -2,10 +2,13 @@
 
 // ===== SUPABASE CONFIG =====
 const SUPABASE_URL = 'https://flnzycipcdqtwcyujzqe.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZsbnp5Y2lwY2RxdHdjeXVqenFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MjA5MzcsImV4cCI6MjA5NzE5NjkzN30.plqw_CtlaJmChDlnkTfHN9MUPVn0IK7Ty_WfujM3ICo';
-// Usamos o "window.supabase" para acessar a biblioteca que veio do HTML
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-const supabase = supabaseClient;
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZsbnp5Y2lwY2RxdHdjeXVqenFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTgzNjU1NDIsImV4cCI6MjAzMzk0MTU0Mn0.eREuYdId0b8A-zN4y0_2_lRco96p_oW0v0vG0m3F6E4'; // Sua chave anônima
+
+// Forçamos o uso da biblioteca do script do HTML e criamos a variável global
+window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Criamos um atalho simples sem usar 'const' ou 'let' para evitar o erro de "already been declared"
+supabase = window.supabase;
 
 // ===== EXERCISES DATA =====
 const EXERCISES = [
