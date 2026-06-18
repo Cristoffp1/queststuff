@@ -10,6 +10,9 @@ window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // Criamos um atalho simples sem usar 'const' ou 'let' para evitar o erro de "already been declared"
 supabase = window.supabase;
 
+// Criamos um atalho simples sem usar 'const' ou 'let' para evitar o erro de "already been declared"
+supabase = window.supabase;
+
 // ===== EXERCISES DATA =====
 const EXERCISES = [
   {
