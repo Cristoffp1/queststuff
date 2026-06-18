@@ -124,56 +124,151 @@ const DEFAULT_STATE = {
 
 let state = { ...DEFAULT_STATE };
 
-async function loadState() {
+// ========================================================
+// CONTROLE DE SESSÃO E AUTENTICAÇÃO (NOVO)
+// ========================================================
+
+// Monitora se o usuário está logado ou deslogado automaticamente
+supabase.auth.onAuthStateChange(async (event, session) => {
+  const authContainer = document.getElementById('auth-container');
+  const userBar = document.getElementById('user-bar');
+  const userDisplayName = document.getElementById('user-display-name');
+
+  if (session) {
+    // Se o usuário está logado, esconde a tela de login e mostra a barra do usuário
+    if (authContainer) authContainer.style.display = 'none';
+    if (userBar) userBar.style.display = 'flex';
+    if (userDisplayName) userDisplayName.textContent = session.user.email;
+    
+    // Carrega o progresso direto do banco de dados (tabela profiles)
+    await loadState(session.user);
+  } else {
+    // Se deslogou, mostra a tela de login e esconde a barra
+    if (authContainer) authContainer.style.display = 'block';
+    if (userBar) userBar.style.display = 'none';
+    
+    // Reseta o jogo para o estado inicial padrão
+    state = { ...DEFAULT_STATE };
+    if (typeof render === 'function') render();
+  }
+});
+
+// Escutadores dos botões da tela de login
+document.getElementById('btn-login')?.addEventListener('click', async () => {
+  const email = document.getElementById('auth-email').value;
+  const password = document.getElementById('auth-password').value;
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) alert("Erro ao entrar: " + error.message);
+});
+
+document.getElementById('btn-register')?.addEventListener('click', async () => {
+  const email = document.getElementById('auth-email').value;
+  const password = document.getElementById('auth-password').value;
+  const { error } = await supabase.auth.signUp({ email, password });
+  if (error) alert("Erro ao cadastrar: " + error.message);
+  else alert("Cadastro realizado! Verifique seu email se o Supabase exigir confirmação.");
+});
+
+document.getElementById('btn-logout')?.addEventListener('click', async () => {
+  const { error } = await supabase.auth.signOut();
+  if (error) alert("Erro ao sair: " + error.message);
+});
+
+
+// ========================================================
+// SINCRONIZAÇÃO ONLINE (PROFILES & ACHIEVEMENTS)
+// ========================================================
+
+async function loadState(user) {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
-    if (user) {
-      // Remove a tela de login se o usuário estiver autenticado
-      const authScreen = document.getElementById('auth-screen');
-      if (authScreen) authScreen.style.display = 'none';
+    // 1. Busca os dados estruturados na tabela 'profiles'
+    let { data: profile, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
 
-      // Busca o progresso do usuário
-      const response = await supabase
-        .from('user_progress')
-        .select('game_state')
-        .eq('user_id', user.id)
-        .maybeSingle();
+    // Se o perfil não existir (código PGRST116), é o primeiro login do usuário!
+    if (error && error.code === 'PGRST116') {
+      const novoPerfil = {
+        id: user.id,
+        nome: user.email.split('@')[0],
+        xp: DEFAULT_STATE.xp || 0,
+        nivel: DEFAULT_STATE.nivel || 1,
+        moedas: DEFAULT_STATE.moedas || 0,
+        streak: DEFAULT_STATE.streak || 0
+      };
 
-      // Verifica com segurança se a resposta e o game_state existem
-      if (response && response.data && response.data.game_state) {
-        state = { ...DEFAULT_STATE, ...response.data.game_state };
-      } else {
-        // Se for um usuário novo (sem dados no banco ainda)
-        state = { ...DEFAULT_STATE };
-        await saveState(); // Cria o registro inicial dele no banco
-      }
-    } else {
-      // Se não estiver logado, mostra a tela de login
-      const authScreen = document.getElementById('auth-screen');
-      if (authScreen) authScreen.style.display = 'flex';
+      // Cria o perfil inicial na tabela 'profiles'
+      const { error: insertError } = await supabase
+        .from('profiles')
+        .insert([novoPerfil]);
+
+      if (insertError) throw insertError;
+      profile = novoPerfil;
+    } else if (error) {
+      throw error;
     }
+
+    // 2. Transfere os dados salvos no banco para as variáveis do jogo
+    state.xp = profile.xp;
+    state.nivel = profile.nivel;
+    state.moedas = profile.moedas;
+    state.streak = profile.streak;
+
+    // Atualiza a tela do jogo
+    checkDayReset();
+    if (typeof render === 'function') render();
+
   } catch (e) {
-    console.error("Erro ao carregar dados do Supabase:", e);
+    console.error("Erro ao carregar dados do Supabase, usando local:", e);
+    // Fallback: se a internet falhar, tenta usar o localStorage
     const saved = localStorage.getItem('fitnessRPG_state');
     if (saved) state = { ...DEFAULT_STATE, ...JSON.parse(saved) };
   }
-  
-  // Roda as atualizações de tela do jogo
-  checkDayReset();
-  if (typeof render === 'function') render(); 
 }
 
 async function saveState() {
   try {
     const { data: { user } } = await supabase.auth.getUser();
+    
+    // Sempre salva no localStorage por garantia/cópia local
+    localStorage.setItem('fitnessRPG_state', JSON.stringify(state));
+
+    // Se tiver usuário logado, atualiza as colunas da tabela 'profiles'
     if (user) {
       await supabase
-        .from('user_progress')
-        .upsert({ user_id: user.id, game_state: state });
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          xp: state.xp,
+          nivel: state.nivel,
+          moedas: state.moedas,
+          streak: state.streak
+        });
     }
   } catch (e) {
-    console.error("Erro ao salvar:", e);
+    console.error("Erro ao salvar dados online:", e);
+  }
+}
+
+// Nova função para quando você quiser salvar uma conquista nova do usuário
+async function registrarConquistaOnline(nomeConquista) {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase
+        .from('achievements')
+        .insert([{
+          user_id: user.id,
+          conquista: nomeConquista,
+          data: new Date().toISOString()
+        }]);
+    }
+  } catch (e) {
+    console.error("Erro ao registrar conquista online:", e);
   }
 }
 
