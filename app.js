@@ -172,10 +172,8 @@ document.getElementById('btn-logout')?.addEventListener('click', async () => {
   const { error } = await supabase.auth.signOut();
   if (error) alert("Erro ao sair: " + error.message);
 });
-
-
 // ========================================================
-// SINCRONIZAÇÃO ONLINE (PROFILES & ACHIEVEMENTS)
+// SINCRONIZAÇÃO ONLINE CORRIGIDA (PROFILES & PROGRESS)
 // ========================================================
 
 async function loadState(user) {
@@ -195,7 +193,10 @@ async function loadState(user) {
         xp: 0,
         nivel: 1,
         moedas: 0,
-        streak: 0
+        streak: 0,
+        total_missions: 0,
+        max_day_missions: 0,
+        last_training_date: null
       };
 
       const { error: insertError } = await supabase
@@ -208,10 +209,14 @@ async function loadState(user) {
       throw error;
     }
 
-    state.xp = profile.xp;
-    state.level = profile.nivel;
-    state.moedas = profile.moedas;
-    state.streak = profile.streak;
+    // CARREGANDO TODOS OS DADOS CORRETAMENTE DO SUPABASE
+    state.xp = profile.xp || 0;
+    state.level = profile.nivel || 1;
+    state.moedas = profile.moedas || 0;
+    state.streak = profile.streak || 0;
+    state.totalMissions = profile.total_missions || 0;
+    state.maxDayMissions = profile.max_day_missions || 0;
+    state.lastTrainingDate = profile.last_training_date || null;
 
     checkDayReset();
     if (typeof render === 'function') render();
@@ -230,6 +235,7 @@ async function saveState() {
     localStorage.setItem('fitnessRPG_state', JSON.stringify(state));
 
     if (user) {
+      // SALVANDO TODAS AS VARIÁVEIS NA NUVEM PARA EVITAR BUGS DE CONTAGEM
       await supabase
         .from('profiles')
         .upsert({
@@ -237,7 +243,10 @@ async function saveState() {
           xp: state.xp,
           nivel: state.level,
           moedas: state.moedas || 0,
-          streak: state.streak || 0
+          streak: state.streak || 0,
+          total_missions: state.totalMissions || 0,
+          max_day_missions: state.maxDayMissions || 0,
+          last_training_date: state.lastTrainingDate
         });
     }
   } catch (e) {
