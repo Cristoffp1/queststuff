@@ -115,19 +115,43 @@ const DEFAULT_STATE = {
 
 let state = { ...DEFAULT_STATE };
 
-function loadState() {
+async function loadState() {
   try {
-    const saved = localStorage.getItem('fitnessRPG_state');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      state = { ...DEFAULT_STATE, ...parsed };
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (user) {
+      // Se o usuário estiver logado, esconde a tela de login e puxa os dados do Supabase
+      document.getElementById('auth-screen').style.display = 'none';
+      
+      const { data } = await supabase
+        .from('user_progress')
+        .select('game_state')
+        .eq('user_id', user.id)
+        .single();
+        
+      if (data && data.game_state) {
+        state = { ...DEFAULT_STATE, ...data.game_state };
+      }
+    } else {
+      // Se não estiver logado, garante que a tela de login fique visível
+      document.getElementById('auth-screen').style.display = 'flex';
     }
-  } catch (e) {}
+  } catch (e) {
+    console.error("Erro ao carregar dados do Supabase:", e);
+  }
   checkDayReset();
 }
-
-function saveState() {
-  localStorage.setItem('fitnessRPG_state', JSON.stringify(state));
+async function saveState() {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase
+        .from('user_progress')
+        .upsert({ user_id: user.id, game_state: state });
+    }
+  } catch (e) {
+    console.error("Erro ao salvar:", e);
+  }
 }
 
 function checkDayReset() {
@@ -992,3 +1016,27 @@ function init() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+// ===== FUNÇÕES DE AUTENTICAÇÃO =====
+async function handleLogin() {
+  const email = document.getElementById('auth-email').value;
+  const password = document.getElementById('auth-password').value;
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  
+  if (error) {
+    alert('Erro ao entrar: ' + error.message);
+  } else {
+    window.location.reload(); 
+  }
+}
+
+async function handleSignUp() {
+  const email = document.getElementById('auth-email').value;
+  const password = document.getElementById('auth-password').value;
+  const { error } = await supabase.auth.signUp({ email, password });
+  
+  if (error) {
+    alert('Erro ao cadastrar: ' + error.message);
+  } else {
+    alert('Conta criada com sucesso! Faça login para começar a jogar.');
+  }
+}
