@@ -1152,3 +1152,19 @@ async function handleSignUp() {
     alert('Conta criada com sucesso! Faça login para começar a jogar.');
   }
 }
+// Função para mostrar o modal estilo Quest Stuff
+function mostrarModalQuestStuff(mensagem) {
+  const modal = document.getElementById('custom-modal');
+  const modalMessage = document.getElementById('modal-message');
+  const modalCloseBtn = document.getElementById('modal-close-btn');
+
+  if (modal && modalMessage) {
+    modalMessage.innerText = mensagem;
+    modal.style.display = 'flex'; // Abre o modal centralizado
+
+    // Configura o botão para fechar quando for clicado
+    modalCloseBtn.onclick = function() {
+      modal.style.display = 'none';
+    };
+  }
+}
