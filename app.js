@@ -655,6 +655,7 @@ function completeMission() {
   // Check achievements
   const newAchs = checkAchievements();
   if (newAchs.length > 0) {
+    registrarConquistaOnline(newAchs[0].title);
     setTimeout(() => showAchievementFlash(newAchs[0]), didLevel ? 3500 : 1000);
   }
 
