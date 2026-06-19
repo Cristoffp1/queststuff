@@ -1048,8 +1048,13 @@ function resetGame() {
   if (confirm('Resetar todo o progresso? Esta ação não pode ser desfeita.')) {
     localStorage.removeItem('fitnessRPG_state');
     state = { ...DEFAULT_STATE };
-    saveState();
-    renderTab(currentTab);
+    
+    // Força o salvamento imediato do estado limpo na nuvem e local
+    saveState(); 
+    
+    if (typeof renderTab === 'function') {
+      renderTab(typeof currentTab !== 'undefined' ? currentTab : 'home');
+    }
     showToast('🔄 Progresso resetado!');
   }
 }
