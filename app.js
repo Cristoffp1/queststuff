@@ -1103,26 +1103,25 @@ function resetGame() {
   }
 }
 
-// ===== INIT =====
+// ===== INIT CORRIGIDO =====
 function init() {
-  // Chamada removida daqui, pois o supabase.auth.onAuthStateChange já cuida de chamar o loadState(session.user) automaticamente!
+  // O loadState agora é disparado pelo supabase.auth.onAuthStateChange, evitando chamadas vazias.
 
-  // Register service worker
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
   }
 
-  // Offline detection
   function updateOnline() {
     const bar = document.getElementById('offline-bar');
-    if (!navigator.onLine) bar.classList.add('show');
-    else bar.classList.remove('show');
+    if (bar) {
+      if (!navigator.onLine) bar.classList.add('show');
+      else bar.classList.remove('show');
+    }
   }
   window.addEventListener('online', updateOnline);
   window.addEventListener('offline', updateOnline);
   updateOnline();
 
-  // Hide splash and show app
   const splash = document.getElementById('splash');
   const app = document.getElementById('app');
 
@@ -1136,7 +1135,7 @@ function init() {
 
 document.addEventListener('DOMContentLoaded', init);
 
-// ===== FUNÇÕES DE AUTENTICAÇÃO CORRIGIDAS =====
+// ===== FUNÇÕES DE AUTENTICAÇÃO E SALVAMENTO CORRIGIDAS =====
 async function handleLogin() {
   const email = document.getElementById('auth-email').value;
   const password = document.getElementById('auth-password').value;
@@ -1145,7 +1144,7 @@ async function handleLogin() {
   if (error) {
     alert('Erro ao entrar: ' + error.message);
   } else if (data?.user) {
-    // Carrega os dados direto antes de qualquer coisa para firmar o login
+    // Garante que carrega os dados do banco imediatamente no login
     await loadState(data.user);
     renderTab('home');
   }
@@ -1163,19 +1162,37 @@ async function handleSignUp() {
   }
 }
 
-// Função para mostrar o modal estilo Quest Stuff
+// Interceptador para salvar IMEDIATAMENTE a cada ganho de XP/Progresso
+async function saveState(user) {
+  if (!user) return;
+
+  const dadosParaSalvar = {
+    xp: player.xp,
+    nivel: player.nivel,
+    // adicione outras variáveis do seu jogador aqui caso existam (ex: moedas, missoes)
+  };
+
+  const { error } = await supabase
+    .from('profiles') // Altere aqui para o nome exato da sua tabela no Supabase se for diferente
+    .update(dadosParaSalvar)
+    .eq('id', user.id);
+
+  // Se o banco rejeitar por qualquer motivo, o celular vai te avisar na hora!
+  if (error) {
+    alert("Erro ao salvar no banco Supabase: " + error.message);
+  }
+}
+
 function mostrarModalQuestStuff(mensagem) {
   const modal = document.getElementById('custom-modal');
   const modalMessage = document.getElementById('modal-message');
   const modalCloseBtn = document.getElementById('modal-close-btn');
 
   if (modal && modalMessage) {
-    modalMessage.innerText = mensaje;
-    modal.style.display = 'flex'; // Abre o modal centralizado
+    modalMessage.innerText = mensagem;
+    modal.style.display = 'flex';
 
-    // Configura o botão para fechar quando for clicado
     modalCloseBtn.onclick = function() {
       modal.style.display = 'none';
     };
   }
-}
