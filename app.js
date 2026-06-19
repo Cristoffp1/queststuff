@@ -71,7 +71,7 @@ const WEEKLY_MISSIONS = [
   { id: 'w1', title: 'Semana do Guerreiro', desc: 'Treine pelo menos 5 dias esta semana', xp: 500, diff: 'Épico', progress: () => state.weekDaysTraining, total: 5 },
   { id: 'w2', title: 'Rei das Flexões', desc: 'Acumule 60 flexões esta semana', xp: 350, diff: 'Difícil', progress: () => state.weekFlexoes, total: 60 },
   { id: 'w3', title: 'Cardio Consistente', desc: 'Complete 4 missões de cardio esta semana', xp: 400, diff: 'Difícil', progress: () => state.weekCardio, total: 4 },
-  { id: 'w4', title: 'Mestre da Consistência', desc: 'Complete 3 missões por dia em 3 dias', xp: 550, diff: 'Épico', progress: () => state.weekConsistency, total: 3 }
+  { id: 'w4', title: 'Mestre da Consistência', desc: 'Complete 3 missões por dia in 3 dias', xp: 550, diff: 'Épico', progress: () => state.weekConsistency, total: 3 }
 ];
 
 const SPECIAL_MISSIONS = [
@@ -126,16 +126,19 @@ supabase.auth.onAuthStateChange(async (event, session) => {
   const authContainer = document.getElementById('auth-container');
   const userBar = document.getElementById('user-bar');
   const userDisplayName = document.getElementById('user-display-name');
+  const btnLogout = document.getElementById('btn-logout');
 
   if (session) {
     if (authContainer) authContainer.style.display = 'none';
     if (userBar) userBar.style.display = 'flex';
     if (userDisplayName) userDisplayName.textContent = session.user.email;
+    if (btnLogout) btnLogout.style.display = 'block';
     
     await loadState(session.user);
   } else {
     if (authContainer) authContainer.style.display = 'block';
     if (userBar) userBar.style.display = 'none';
+    if (btnLogout) btnLogout.style.display = 'none';
 
     const savedLocal = localStorage.getItem('fitnessRPG_state');
     if (savedLocal) {
@@ -160,7 +163,6 @@ async function loadState(user) {
   try {
     if (!user) return;
 
-    // Buscando da tabela "Profiles" com P maiúsculo entre aspas
     let { data: profile, error } = await supabase
       .from('Profiles')
       .select('*')
@@ -372,7 +374,7 @@ function openMissionScreen() {
   if (ex.type === 'timer') updateRing(0, target);
 }
 
-function closeMissionScreen() {
+function deleteMissionScreen() {
   clearInterval(timerInterval);
   document.getElementById('mission-screen')?.classList.remove('open');
 }
@@ -380,7 +382,7 @@ function closeMissionScreen() {
 // ===== MISSION LOGIC FIX =====
 async function completeMission() {
   const ex = activeMission;
-  closeMissionScreen();
+  document.getElementById('mission-screen')?.classList.remove('open');
 
   const today = new Date().toDateString();
   const hour = new Date().getHours();
@@ -437,7 +439,6 @@ async function completeMission() {
         });
         
       if (error) console.error("Erro ao fazer upsert no Supabase:", error.message);
-      else console.log("Progresso salvo com sucesso na nuvem!");
     }
   } catch (e) {
     console.error("Erro ao salvar progresso:", e);
@@ -618,9 +619,8 @@ function showLevelUp(level) {
   spawnParticles();
 }
 
-// ===== AUTH ACTIONS =====
+// ===== AUTH ACTIONS GLOBALS =====
 
-// Alterado para window. para o HTML conseguir enxergar o clique de entrar!
 window.handleSignIn = async function() {
     const email = document.getElementById('auth-email').value;
     const password = document.getElementById('auth-password').value;
@@ -635,16 +635,10 @@ window.handleSignIn = async function() {
     if (error) {
         alert('Erro ao entrar: ' + error.message);
     } else {
-        if (typeof mostrarModalQuestStuff === 'function') {
-            mostrarModalQuestStuff("Login realizado com sucesso! Bem-vindo de volta.");
-        } else {
-            alert("Login realizado com sucesso!");
-        }
+        alert("Login realizado com sucesso!");
     }
 }
 
-// Procure pela sua função de registrar (geralmente chamada handleSignUp ou handleRegister) 
-// e mude o início dela também para window. Exemplo:
 window.handleSignUp = async function() {
     const email = document.getElementById('auth-email').value;
     const password = document.getElementById('auth-password').value;
@@ -659,25 +653,18 @@ window.handleSignUp = async function() {
     if (error) {
         alert('Erro ao registrar: ' + error.message);
     } else {
-        alert('Cadastro realizado! Verifique seu e-mail caso necessário.');
+        alert('Cadastro realizado! Se divertir no Quest Stuff.');
     }
 }
 
-// O seu logout já está perfeito aqui na linha 645:
-window.handleSignOut = async function() {
-    // ... seu código atual do logout que já está certinho
-}
-
-// Altere o início da sua função para que ela seja exportada para a janela (window)
 window.handleSignOut = async function() {
     try {
         const { error } = await supabase.auth.signOut();
         if (error) throw error;
         
-        // Limpa o estado local se necessário
         localStorage.removeItem('fitnessRPG_state'); 
         alert("Deslogado com sucesso!");
-        window.location.reload(); // Força o recarregamento para limpar a tela
+        window.location.reload();
     } catch (error) {
         console.error('Erro ao sair:', error.message);
     }
@@ -809,13 +796,6 @@ function renderHome() {
         </div>
       `).join('')}
     </div>
-    ${state.completedToday.length === EXERCISES.length ? `
-      <div class="card" style="margin:16px 20px;text-align:center">
-        <div style="font-size:40px">🎉</div>
-        <div style="font-weight:800;margin-top:8px">Todas as missões concluídas!</div>
-        <div style="color:var(--muted);font-size:13px;margin-top:4px">Você é imparável hoje!</div>
-      </div>
-    ` : ''}
   `;
 }
 
@@ -851,19 +831,6 @@ function renderDailyMissions() {
             <div style="font-size:12px;color:var(--muted)">${target} ${ex.unit} · ${ex.sets} séries</div>
           </div>
           <span class="diff-badge diff-${ex.diff}">${ex.diff}</span>
-          ${done ? '<span style="font-size:20px">✅</span>' : `<span style="font-size:13px;font-weight:700;color:var(--gold)">+${ex.xp} XP</span>`}
-        </div>
-        <div id="mc-${ex.id}" style="display:none">
-          <div class="mission-card-body">
-            <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Músculos trabalhados:</div>
-            <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px">
-              ${ex.muscles.map(m => `<span class="muscle-tag" style="background:${ex.mColor}22;color:${ex.mColor}">${m}</span>`).join('')}
-            </div>
-            <ul class="steps-list">
-              ${ex.steps.map((s, i) => `<li><span class="step-num">${i+1}</span><span>${s}</span></li>`).join('')}
-            </ul>
-            ${!done ? `<button class="btn-primary" style="margin-top:12px" onclick="startMission('${ex.id}')">Iniciar Missão 💪</button>` : ''}
-          </div>
         </div>
       </div>
     `;
@@ -877,18 +844,8 @@ function renderWeeklyMissions() {
     const pct = Math.round((prog / m.total) * 100);
     return `
       <div class="weekly-card ${done ? 'completed' : ''}">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <div style="font-weight:700;font-size:15px">${m.title} ${done ? '✅' : ''}</div>
-          <span class="diff-badge diff-${m.diff}">${m.diff}</span>
-        </div>
-        <div style="font-size:13px;color:var(--muted);margin-bottom:10px">${m.desc}</div>
-        <div class="weekly-progress">
-          <div style="display:flex;justify-content:space-between;font-size:12px">
-            <span style="color:var(--muted)">${prog} / ${m.total}</span>
-            <span style="color:var(--gold);font-weight:700">+${m.xp} XP</span>
-          </div>
-          <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
-        </div>
+        <div style="font-weight:700;font-size:15px">${m.title}</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
       </div>
     `;
   }).join('');
@@ -899,12 +856,7 @@ function renderSpecialMissions() {
     const done = state.completedSpecial.includes(m.id);
     return `
       <div class="special-card ${done ? 'completed' : ''}">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <div style="font-weight:700;font-size:15px">${m.title} ${done ? '✅' : ''}</div>
-          <span class="diff-badge diff-${m.diff}">${m.diff}</span>
-        </div>
-        <div style="font-size:13px;color:var(--muted);margin-bottom:8px">${m.desc}</div>
-        <div style="font-size:13px;font-weight:700;color:var(--gold)">+${m.xp} XP</div>
+        <div style="font-weight:700;font-size:15px">${m.title}</div>
       </div>
     `;
   }).join('');
@@ -925,114 +877,25 @@ function renderAchievements() {
   return `
     <div class="achievements-header">
       <div style="font-size:24px;font-weight:800">🏆 Conquistas</div>
-      <div style="font-size:13px;color:var(--muted)">${unlocked} / ${ACHIEVEMENTS.length} desbloqueadas</div>
-      <div style="height:6px;background:var(--border);border-radius:3px;margin-top:10px;overflow:hidden">
-        <div style="height:100%;width:${Math.round(unlocked/ACHIEVEMENTS.length*100)}%;background:linear-gradient(90deg,var(--primary),var(--gold));border-radius:3px;transition:width 0.5s"></div>
-      </div>
     </div>
     <div class="ach-grid">
       ${ACHIEVEMENTS.map(a => {
         const isUnlocked = state.unlockedAchievements.includes(a.id);
-        return `
-          <div class="ach-card ${isUnlocked ? 'unlocked' : 'locked'}">
-            <div class="ach-icon">${a.icon}</div>
-            <div class="ach-title">${a.title}</div>
-            <div class="ach-desc">${a.desc}</div>
-            ${isUnlocked ? '<div class="ach-unlocked-badge">✓ Desbloqueada</div>' : '<div style="font-size:10px;color:var(--muted);margin-top:6px">🔒 Bloqueada</div>'}
-          </div>
-        `;
+        return `<div class="ach-card">${a.title}</div>`;
       }).join('')}
     </div>
-    <div style="height:20px"></div>
   `;
 }
 
 function renderRanking() {
-  const tabs = ['regional', 'nacional', 'mundial'];
-  const labels = { regional: '🏙️ Regional', nacional: '🇧🇷 Nacional', mundial: '🌍 Mundial' };
-  const players = getRankingPlayers(rankingSubTab);
-  const myPos = players.findIndex(p => p.isMe) + 1;
-
-  return `
-    <div class="ranking-header">
-      <div style="font-size:24px;font-weight:800">📊 Ranking</div>
-    </div>
-    <div class="tab-pills">
-      ${tabs.map(t => `<button class="pill ${rankingSubTab === t ? 'active' : ''}" onclick="switchRankingTab('${t}')">${labels[t]}</button>`).join('')}
-    </div>
-    <div class="my-rank-card">
-      <div style="font-size:13px;color:rgba(255,255,255,0.6)">Sua posição</div>
-      <div class="my-rank-num">#${myPos}</div>
-      <div class="my-rank-label">${state.totalXP.toLocaleString()} XP total · Nível ${state.level}</div>
-    </div>
-    <div class="ranking-list">
-      ${players.slice(0, 10).map((p, i) => {
-        const pos = i + 1;
-        const posClass = pos === 1 ? 'gold' : pos === 2 ? 'silver' : pos === 3 ? 'bronze' : '';
-        const medal = pos === 1 ? '🥇' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : `#${pos}`;
-        return `
-          <div class="rank-item ${p.isMe ? 'is-me' : ''}">
-            <div class="rank-pos ${posClass}">${medal}</div>
-            <div class="rank-avatar">${p.avatar}</div>
-            <div class="rank-info">
-              <div class="rank-name">${p.name}${p.isMe ? ' (Você)' : ''}</div>
-              <div class="rank-sub">Nível ${p.level}</div>
-            </div>
-            <div class="rank-xp">${p.xp.toLocaleString()} XP</div>
-          </div>
-        `;
-      }).join('')}
-    </div>
-    <div class="info-note">🌐 Ranking global ao vivo — posições baseadas em XP total.</div>
-    <div style="height:20px"></div>
-  `;
-}
-
-function switchRankingTab(tab) {
-  rankingSubTab = tab;
-  renderTab('ranking');
+  return `<div class="ranking-header">📊 Ranking em Tempo Real</div>`;
 }
 
 function renderProfile() {
   const xpNeeded = xpForLevel(state.level);
-  const pct = Math.min(100, (state.xp / xpNeeded) * 100);
-  const circumference = 2 * Math.PI * 44;
-  const offset = circumference * (1 - pct / 100);
-  const rankName = state.level < 5 ? 'Bronze' : state.level < 10 ? 'Prata' : state.level < 20 ? 'Ouro' : state.level < 35 ? 'Diamante' : 'Lendário';
-
   return `
     <div class="profile-header">
-      <div class="profile-ring-wrap">
-        <svg width="110" height="110" viewBox="0 0 110 110">
-          <circle cx="55" cy="55" r="44" fill="none" stroke="#1E2040" stroke-width="8"/>
-          <circle cx="55" cy="55" r="44" fill="none" stroke="url(#xpGrad)" stroke-width="8"
-            stroke-dasharray="${circumference}" stroke-dashoffset="${offset}"
-            stroke-linecap="round" transform="rotate(-90 55 55)"/>
-          <defs>
-            <linearGradient id="xpGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stop-color="#7C3AED"/>
-              <stop offset="100%" stop-color="#F59E0B"/>
-            </linearGradient>
-          </defs>
-          <text x="55" y="50" text-anchor="middle" font-size="20" font-weight="900" fill="#E2E8F0">${state.level}</text>
-          <text x="55" y="66" text-anchor="middle" font-size="10" fill="#6B7280">NÍVEL</text>
-        </svg>
-      </div>
       <div class="profile-name">Guerreiro</div>
-      <div class="profile-rank-badge rank-${rankName}">${rankName}</div>
-      <div style="font-size:12px;color:var(--muted);margin-top:6px">${state.xp} / ${xpNeeded} XP para próximo nível</div>
-    </div>
-    <div class="stats-grid">
-      <div class="stat-card"><div class="stat-val">${state.totalMissions}</div><div class="stat-label">Missões</div></div>
-      <div class="stat-card"><div class="stat-val">${state.streak}🔥</div><div class="stat-label">Streak</div></div>
-      <div class="stat-card"><div class="stat-val">${state.totalXP.toLocaleString()}</div><div class="stat-label">XP Total</div></div>
-      <div class="stat-card"><div class="stat-val">${state.unlockedAchievements.length}</div><div class="stat-label">Conquistas</div></div>
-      <div class="stat-card"><div class="stat-val">${state.totalFlexoes}</div><div class="stat-label">Flexões</div></div>
-      <div class="stat-card"><div class="stat-val">${state.totalAgacham}</div><div class="stat-label">Agachamentos</div></div>
-      <div class="stat-card"><div class="stat-val">${Math.floor(state.totalPrancha / 60)}min</div><div class="stat-label">Prancha Total</div></div>
-      <div class="stat-card"><div class="stat-val">${state.maxDayMissions}</div><div class="stat-label">Melhor Dia</div></div>
-    </div>
-    <div style="padding:0 20px 20px">
       <button class="btn-secondary" style="width:100%;margin-top:8px" onclick="resetGame()">🔄 Resetar Progresso</button>
     </div>
   `;
@@ -1042,18 +905,13 @@ function resetGame() {
   if (confirm('Resetar todo o progresso? Esta ação não pode ser desfeita.')) {
     localStorage.removeItem('fitnessRPG_state');
     state = { ...DEFAULT_STATE };
-    
     saveState(); 
-    
-    if (typeof renderTab === 'function') {
-      renderTab(typeof currentTab !== 'undefined' ? currentTab : 'home');
-    }
-    showToast('🔄 Progresso resetado!');
+    window.location.reload();
   }
 }
 
 // ==========================================
-// INITIALIZATION AND AUTHFUNCTIONS
+// INITIALIZATION AND NETWORK CONTROL
 // ==========================================
 let splash;
 let app;
@@ -1069,12 +927,7 @@ function updateOnline() {
 function init() {
     const salvo = localStorage.getItem('fitnessRPG_state');
     if (salvo) {
-        try {
-            state = JSON.parse(salvo); 
-        } catch (e) {
-            console.error("Erro ao ler estado salvo, usando padrão:", e);
-            state = { ...DEFAULT_STATE };
-        }
+        try { state = JSON.parse(salvo); } catch (e) { state = { ...DEFAULT_STATE }; }
     } else {
         state = { ...DEFAULT_STATE };
     }
@@ -1090,23 +943,7 @@ function init() {
     window.addEventListener('offline', updateOnline);
     updateOnline();
 
-    // ===== VINCULANDO OS BOTÕES APÓS O CARREGAMENTO TOTAL DO DOM =====
-    document.getElementById('btn-login')?.addEventListener('click', handleSignIn);
-    document.getElementById('btn-logout')?.addEventListener('click', handleSignOut);
-    document.getElementById('btn-register')?.addEventListener('click', async () => {
-      const email = document.getElementById('auth-email').value;
-      const password = document.getElementById('auth-password').value;
-      const { error } = await supabase.auth.signUp({ email, password });
-      
-      if (error) {
-        if (typeof mostrarModalQuestStuff === 'function') mostrarModalQuestStuff("Erro ao cadastrar: " + error.message);
-        else alert("Erro ao cadastrar: " + error.message);
-      } else {
-        if (typeof mostrarModalQuestStuff === 'function') mostrarModalQuestStuff("Cadastro realizado com sucesso! Divirta-se no Quest Stuff.");
-        else alert("Cadastro realizado com sucesso!");
-      }
-    });
-
+    // Controle do Splash Screen
     setTimeout(() => {
         if (splash) splash.classList.add('hidden');
         if (app) app.style.display = 'flex';
