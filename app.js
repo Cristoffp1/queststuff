@@ -694,8 +694,17 @@ async function completeMission() {
     setTimeout(() => showAchievementFlash(newAchs[0]), didLevel ? 3500 : 1000);
   }
 
-  renderTab(currentTab);
-}// Chave que fecha a completeMission()
+    // Executa as missões semanais e especiais ANTES de renderizar a tela
+  checkWeeklyMissions();
+  if (typeof checkSpecialMissions === 'function') {
+    checkSpecialMissions();
+  }
+
+  // Força a atualização visual imediata de tudo na tela
+  if (typeof renderTab === 'function') {
+    renderTab(currentTab);
+  }
+} // 👈 Apenas UMA chave aqui para fechar a completeMission()!
 
 function checkWeeklyMissions() {
   WEEKLY_MISSIONS.forEach(m => {
