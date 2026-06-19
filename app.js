@@ -1188,27 +1188,6 @@ async function handleSignUp() {
   }
 }
 
-// Interceptador para salvar IMEDIATAMENTE a cada ganho de XP/Progresso
-async function saveState(user) {
-  if (!user) return;
-
-  const dadosParaSalvar = {
-    xp: player.xp,
-    nivel: player.nivel,
-    // adicione outras variáveis do seu jogador aqui caso existam (ex: moedas, missoes)
-  };
-
-  const { error } = await supabase
-    .from('profiles') // Altere aqui para o nome exato da sua tabela no Supabase se for diferente
-    .update(dadosParaSalvar)
-    .eq('id', user.id);
-
-  // Se o banco rejeitar por qualquer motivo, o celular vai te avisar na hora!
-  if (error) {
-    alert("Erro ao salvar no banco Supabase: " + error.message);
-  }
-}
-
 function mostrarModalQuestStuff(mensagem) {
   const modal = document.getElementById('custom-modal');
   const modalMessage = document.getElementById('modal-message');
