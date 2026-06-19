@@ -1201,4 +1201,3 @@ function mostrarModalQuestStuff(mensagem) {
       modal.style.display = 'none';
     };
   }
-}
