@@ -695,7 +695,7 @@ async function completeMission() {
   }
 
   renderTab(currentTab);
-}
+}// Chave que fecha a completeMission()
 
 function checkWeeklyMissions() {
   WEEKLY_MISSIONS.forEach(m => {
