@@ -656,13 +656,16 @@ async function completeMission() {
     didLevel = true;
   }
 
-  // SALVAMENTO SEGURO NO SUPABASE
+  // SALVAMENTO SEGURO NO SUPABASE (CORRIGIDO)
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    // Busca a sessão atual de forma assíncrona e segura
+    const session = (await supabase.auth.getSession())?.data?.session;
+    const user = session?.user;
+    
     localStorage.setItem('fitnessRPG_state', JSON.stringify(state));
 
     if (user) {
-      await supabase
+      const { error } = await supabase
         .from('profiles')
         .upsert({
           id: user.id,
@@ -674,6 +677,9 @@ async function completeMission() {
           max_day_missions: state.maxDayMissions || 0,
           last_training_date: state.lastTrainingDate
         });
+        
+      if (error) console.error("Erro ao fazer upsert no Supabase:", error.message);
+      else console.log("Progresso salvo com sucesso na nuvem!");
     }
   } catch (e) {
     console.error("Erro ao salvar progresso:", e);
