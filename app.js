@@ -134,13 +134,25 @@ supabase.auth.onAuthStateChange(async (event, session) => {
     if (userDisplayName) userDisplayName.textContent = session.user.email;
     
     await loadState(session.user);
-  } else {
-    if (authContainer) authContainer.style.display = 'block';
-    if (userBar) userBar.style.display = 'none';
-    
-    state = { ...DEFAULT_STATE };
-    if (typeof renderTab === 'function') renderTab(currentTab);
-  }
+    } else {
+        if (authContainer) authContainer.style.display = 'block';
+        if (userBar) userBar.style.display = 'none';
+
+        // TENTA MANTER O PROGRESSO LOCAL EM VEZ DE ZERAR TUDO
+        const savedLocal = localStorage.getItem('fitnessRPG_state');
+        if (savedLocal) {
+            try {
+                state = JSON.parse(savedLocal);
+            } catch(e) {
+                state = { ...DEFAULT_STATE };
+            }
+        } else {
+            state = { ...DEFAULT_STATE };
+        }
+        
+        if (typeof renderTab === 'function') renderTab(currentTab);
+    }
+
 });
 
 // Escutadores dos botões da tela de login
