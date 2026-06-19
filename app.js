@@ -619,26 +619,53 @@ function showLevelUp(level) {
 }
 
 // ===== AUTH ACTIONS =====
-async function handleSignIn() {
-  const email = document.getElementById('auth-email').value;
-  const password = document.getElementById('auth-password').value;
-  
-  if (!email || !password) {
-    alert('Por favor, preencha o e-mail e a senha.');
-    return;
-  }
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-  
-  if (error) {
-    alert('Erro ao entrar: ' + error.message);
-  } else {
-    if (typeof mostrarModalQuestStuff === 'function') {
-      mostrarModalQuestStuff("Login realizado com sucesso! Bem-vindo de volta.");
-    } else {
-      alert("Login realizado com sucesso!");
+// Alterado para window. para o HTML conseguir enxergar o clique de entrar!
+window.handleSignIn = async function() {
+    const email = document.getElementById('auth-email').value;
+    const password = document.getElementById('auth-password').value;
+
+    if (!email || !password) {
+        alert('Por favor, preencha o e-mail e a senha.');
+        return;
     }
-  }
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (error) {
+        alert('Erro ao entrar: ' + error.message);
+    } else {
+        if (typeof mostrarModalQuestStuff === 'function') {
+            mostrarModalQuestStuff("Login realizado com sucesso! Bem-vindo de volta.");
+        } else {
+            alert("Login realizado com sucesso!");
+        }
+    }
+}
+
+// Procure pela sua função de registrar (geralmente chamada handleSignUp ou handleRegister) 
+// e mude o início dela também para window. Exemplo:
+window.handleSignUp = async function() {
+    const email = document.getElementById('auth-email').value;
+    const password = document.getElementById('auth-password').value;
+
+    if (!email || !password) {
+        alert('Por favor, preencha o e-mail e a senha.');
+        return;
+    }
+
+    const { error } = await supabase.auth.signUp({ email, password });
+
+    if (error) {
+        alert('Erro ao registrar: ' + error.message);
+    } else {
+        alert('Cadastro realizado! Verifique seu e-mail caso necessário.');
+    }
+}
+
+// O seu logout já está perfeito aqui na linha 645:
+window.handleSignOut = async function() {
+    // ... seu código atual do logout que já está certinho
 }
 
 // Altere o início da sua função para que ela seja exportada para a janela (window)
