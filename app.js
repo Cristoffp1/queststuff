@@ -606,7 +606,7 @@ function nextSet() {
   openMissionScreen();
 }
 
-function completeMission() {
+async function completeMission() {
   const ex = activeMission;
   closeMissionScreen();
 
@@ -637,12 +637,7 @@ function completeMission() {
   if (ex.cat === 'cardio') state.weekCardio++;
   if (ex.id === 'd1') state.weekFlexoes += ex.target;
 
-  // XP
-  const prevLevel = state.level;
-  const didLevel = addXP(ex.xp);
-
   // Check weekly/special missions
-  checkWeeklyMissions();
   checkSpecialMissions();
 
   // Check streak
@@ -651,9 +646,40 @@ function completeMission() {
     state.weekConsistency = Math.min(3, (state.weekConsistency || 0) + 1);
   }
 
-  saveState();
+  // XP Progress & Level Up Check
+  state.xp += ex.xp;
+  state.totalXP += ex.xp;
+  let didLevel = false;
+  while (state.xp >= Math.floor(100 * Math.pow(state.level, 1.5))) {
+    state.xp -= Math.floor(100 * Math.pow(state.level, 1.5));
+    state.level++;
+    didLevel = true;
+  }
 
-  // Feedback
+  // SALVAMENTO SEGURO NO SUPABASE
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    localStorage.setItem('fitnessRPG_state', JSON.stringify(state));
+
+    if (user) {
+      await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          xp: state.xp,
+          nivel: state.level,
+          moedas: state.moedas || 0,
+          streak: state.streak || 0,
+          total_missions: state.totalMissions || 0,
+          max_day_missions: state.maxDayMissions || 0,
+          last_training_date: state.lastTrainingDate
+        });
+    }
+  } catch (e) {
+    console.error("Erro ao salvar progresso:", e);
+  }
+
+  // Feedback Visual
   showToast(`✅ ${ex.name} completo! +${ex.xp} XP`, 'success');
   spawnParticles();
 
