@@ -152,24 +152,6 @@ supabase.auth.onAuthStateChange(async (event, session) => {
   }
 });
 
-document.getElementById('btn-login')?.addEventListener('click', handleSignIn);
-
-document.getElementById('btn-register')?.addEventListener('click', async () => {
-  const email = document.getElementById('auth-email').value;
-  const password = document.getElementById('auth-password').value;
-  const { error } = await supabase.auth.signUp({ email, password });
-  
-  if (error) {
-    if (typeof mostrarModalQuestStuff === 'function') mostrarModalQuestStuff("Erro ao cadastrar: " + error.message);
-    else alert("Erro ao cadastrar: " + error.message);
-  } else {
-    if (typeof mostrarModalQuestStuff === 'function') mostrarModalQuestStuff("Cadastro realizado com sucesso! Divirta-se no Quest Stuff.");
-    else alert("Cadastro realizado com sucesso!");
-  }
-});
-
-document.getElementById('btn-logout')?.addEventListener('click', handleSignOut);
-
 // ========================================================
 // SINCRONIZAÇÃO ONLINE (PROFILES & PROGRESS)
 // ========================================================
@@ -178,8 +160,9 @@ async function loadState(user) {
   try {
     if (!user) return;
 
+    // Buscando da tabela "Profiles" com P maiúsculo entre aspas
     let { data: profile, error } = await supabase
-      .from('profiles')
+      .from('Profiles')
       .select('*')
       .eq('id', user.id)
       .single();
@@ -198,7 +181,7 @@ async function loadState(user) {
       };
 
       const { error: insertError } = await supabase
-        .from('profiles')
+        .from('Profiles')
         .insert([novoPerfil]);
 
       if (insertError) throw insertError;
@@ -233,11 +216,12 @@ async function saveState() {
     }
 
     try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { session } } = await supabase.auth.getSession();
+        const user = session?.user;
         
         if (user) {
             await supabase
-                .from('profiles')
+                .from('Profiles')
                 .upsert({
                     id: user.id,
                     xp: state.xp,
@@ -256,7 +240,8 @@ async function saveState() {
 
 async function registrarConquistaOnline(nomeConquista) {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user;
     if (user) {
       await supabase
         .from('achievements')
@@ -439,7 +424,7 @@ async function completeMission() {
 
     if (user) {
       const { error } = await supabase
-        .from('profiles')
+        .from('Profiles')
         .upsert({
           id: user.id,
           xp: state.xp,
@@ -631,6 +616,40 @@ function showLevelUp(level) {
   if (num) num.textContent = level;
   el?.classList.add('show');
   spawnParticles();
+}
+
+// ===== AUTH ACTIONS =====
+async function handleSignIn() {
+  const email = document.getElementById('auth-email').value;
+  const password = document.getElementById('auth-password').value;
+  
+  if (!email || !password) {
+    alert('Por favor, preencha o e-mail e a senha.');
+    return;
+  }
+
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  
+  if (error) {
+    alert('Erro ao entrar: ' + error.message);
+  } else {
+    if (typeof mostrarModalQuestStuff === 'function') {
+      mostrarModalQuestStuff("Login realizado com sucesso! Bem-vindo de volta.");
+    } else {
+      alert("Login realizado com sucesso!");
+    }
+  }
+}
+
+async function handleSignOut() {
+  const { error } = await supabase.auth.signOut();
+  if (error) {
+    alert('Erro ao sair: ' + error.message);
+  } else {
+    localStorage.removeItem('fitnessRPG_state'); 
+    alert('Você saiu da conta!');
+    window.location.reload(); // Atualiza a tela limpando tudo visualmente
+  }
 }
 
 function closeLevelUp() {
@@ -1040,6 +1059,23 @@ function init() {
     window.addEventListener('offline', updateOnline);
     updateOnline();
 
+    // ===== VINCULANDO OS BOTÕES APÓS O CARREGAMENTO TOTAL DO DOM =====
+    document.getElementById('btn-login')?.addEventListener('click', handleSignIn);
+    document.getElementById('btn-logout')?.addEventListener('click', handleSignOut);
+    document.getElementById('btn-register')?.addEventListener('click', async () => {
+      const email = document.getElementById('auth-email').value;
+      const password = document.getElementById('auth-password').value;
+      const { error } = await supabase.auth.signUp({ email, password });
+      
+      if (error) {
+        if (typeof mostrarModalQuestStuff === 'function') mostrarModalQuestStuff("Erro ao cadastrar: " + error.message);
+        else alert("Erro ao cadastrar: " + error.message);
+      } else {
+        if (typeof mostrarModalQuestStuff === 'function') mostrarModalQuestStuff("Cadastro realizado com sucesso! Divirta-se no Quest Stuff.");
+        else alert("Cadastro realizado com sucesso!");
+      }
+    });
+
     setTimeout(() => {
         if (splash) splash.classList.add('hidden');
         if (app) app.style.display = 'flex';
@@ -1053,35 +1089,3 @@ function init() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
-
-async function handleSignIn() {
-  const email = document.getElementById('auth-email').value;
-  const password = document.getElementById('auth-password').value;
-  
-  if (!email || !password) {
-    alert('Por favor, preencha o e-mail e a senha.');
-    return;
-  }
-
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  
-  if (error) {
-    alert('Erro ao entrar: ' + error.message);
-  } else {
-    if (typeof mostrarModalQuestStuff === 'function') {
-      mostrarModalQuestStuff("Login realizado com sucesso! Bem-vindo de volta.");
-    } else {
-      alert("Login realizado com sucesso!");
-    }
-  }
-}
-
-async function handleSignOut() {
-  const { error } = await supabase.auth.signOut();
-  if (error) {
-    alert('Erro ao sair: ' + error.message);
-  } else {
-    localStorage.removeItem('fitnessRPG_state'); 
-    alert('Você saiu da conta!');
-  }
-}
