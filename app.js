@@ -1162,20 +1162,6 @@ function init() {
 document.addEventListener('DOMContentLoaded', init);
 
 // ===== FUNÇÕES DE AUTENTICAÇÃO E SALVAMENTO CORRIGIDAS =====
-async function handleLogin() {
-  const email = document.getElementById('auth-email').value;
-  const password = document.getElementById('auth-password').value;
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  
-  if (error) {
-    alert('Erro ao entrar: ' + error.message);
-  } else if (data?.user) {
-    // Garante que carrega os dados do banco imediatamente no login
-    await loadState(data.user);
-    renderTab('home');
-  }
-}
-
 async function handleSignUp() {
   const email = document.getElementById('auth-email').value;
   const password = document.getElementById('auth-password').value;
@@ -1184,7 +1170,13 @@ async function handleSignUp() {
   if (error) {
     alert('Erro ao cadastrar: ' + error.message);
   } else {
-    function mostrarModalQuestStuff(mensagem) {
+    // Chama a função global do modal personalizado
+    mostrarModalQuestStuff("Cadastro realizado com sucesso! Divirta-se no Quest Stuff.");
+  }
+}
+
+// Deixe a função do modal escopada globalmente para poder usar em qualquer lugar do app
+function mostrarModalQuestStuff(mensagem) {
   const modal = document.getElementById('custom-modal');
   const modalMessage = document.getElementById('modal-message');
   const modalCloseBtn = document.getElementById('modal-close-btn');
