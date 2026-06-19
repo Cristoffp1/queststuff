@@ -122,7 +122,6 @@ let state = { ...DEFAULT_STATE };
 // CONTROLE DE SESSÃO E AUTENTICAÇÃO
 // ========================================================
 
-// Monitora se o usuário está logado ou deslogado automaticamente
 supabase.auth.onAuthStateChange(async (event, session) => {
   const authContainer = document.getElementById('auth-container');
   const userBar = document.getElementById('user-bar');
@@ -134,28 +133,25 @@ supabase.auth.onAuthStateChange(async (event, session) => {
     if (userDisplayName) userDisplayName.textContent = session.user.email;
     
     await loadState(session.user);
-    } else {
-        if (authContainer) authContainer.style.display = 'block';
-        if (userBar) userBar.style.display = 'none';
+  } else {
+    if (authContainer) authContainer.style.display = 'block';
+    if (userBar) userBar.style.display = 'none';
 
-        // TENTA MANTER O PROGRESSO LOCAL EM VEZ DE ZERAR TUDO
-        const savedLocal = localStorage.getItem('fitnessRPG_state');
-        if (savedLocal) {
-            try {
-                state = JSON.parse(savedLocal);
-            } catch(e) {
-                state = { ...DEFAULT_STATE };
-            }
-        } else {
+    const savedLocal = localStorage.getItem('fitnessRPG_state');
+    if (savedLocal) {
+        try {
+            state = JSON.parse(savedLocal);
+        } catch(e) {
             state = { ...DEFAULT_STATE };
         }
-        
-        if (typeof renderTab === 'function') renderTab(currentTab);
+    } else {
+        state = { ...DEFAULT_STATE };
     }
-
+    
+    if (typeof renderTab === 'function') renderTab(currentTab);
+  }
 });
 
-// Escutadores dos botões da tela de login
 document.getElementById('btn-login')?.addEventListener('click', handleSignIn);
 
 document.getElementById('btn-register')?.addEventListener('click', async () => {
@@ -175,7 +171,7 @@ document.getElementById('btn-register')?.addEventListener('click', async () => {
 document.getElementById('btn-logout')?.addEventListener('click', handleSignOut);
 
 // ========================================================
-// SINCRONIZAÇÃO ONLINE CORRIGIDA (PROFILES & PROGRESS)
+// SINCRONIZAÇÃO ONLINE (PROFILES & PROGRESS)
 // ========================================================
 
 async function loadState(user) {
@@ -230,14 +226,12 @@ async function loadState(user) {
 }
 
 async function saveState() {
-    // 1. SALVA NO LOCALSTORAGE IMEDIATAMENTE (Garante o progresso no celular mesmo se fechar rápido)
     try {
         localStorage.setItem('fitnessRPG_state', JSON.stringify(state));
     } catch (err) {
         console.error("Erro ao salvar no localStorage:", err);
     }
 
-    // 2. SALVA NO SUPABASE EM SEGUNDO PLANO (Se houver usuário logado)
     try {
         const { data: { user } } = await supabase.auth.getUser();
         
@@ -321,7 +315,7 @@ function scaledTarget(ex) {
   return Math.floor(ex.base + range * factor);
 }
 
-// ===== MISSION LOGIC =====
+// ===== MISSION CONTROLS =====
 let activeMission = null;
 let currentSet = 1;
 let currentReps = 0;
@@ -398,7 +392,7 @@ function closeMissionScreen() {
   document.getElementById('mission-screen')?.classList.remove('open');
 }
 
-// ===== MISSION LOGIC CORRIGIDA =====
+// ===== MISSION LOGIC FIX =====
 async function completeMission() {
   const ex = activeMission;
   closeMissionScreen();
@@ -435,10 +429,8 @@ async function completeMission() {
     state.weekConsistency = Math.min(3, (state.weekConsistency || 0) + 1);
   }
 
-  // CORREÇÃO: Usando a sua função addXP que centraliza a subida de nível de forma correta
   let didLevel = addXP(ex.xp);
 
-  // Salvamento aguarda a resposta para evitar condições de corrida (Race Conditions)
   try {
     localStorage.setItem('fitnessRPG_state', JSON.stringify(state));
     
@@ -481,57 +473,8 @@ async function completeMission() {
 
   checkWeeklyMissions();
   
-  // CORREÇÃO: Evita erro de escopo checando se window.currentTab existe de forma segura
   if (typeof renderTab === 'function') {
     renderTab(typeof currentTab !== 'undefined' ? currentTab : 'home');
-  }
-}
-
-
-  // Salvamento agora aguarda a resposta para evitar condições de corrida (Race Conditions)
-  try {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const user = sessionData?.session?.user;
-    
-    localStorage.setItem('fitnessRPG_state', JSON.stringify(state));
-
-    if (user) {
-      const { error } = await supabase
-        .from('profiles')
-        .upsert({
-          id: user.id,
-          xp: state.xp,
-          nivel: state.level,
-          moedas: state.moedas || 0,
-          streak: state.streak || 0,
-          total_missions: state.totalMissions || 0,
-          max_day_missions: state.maxDayMissions || 0,
-          last_training_date: state.lastTrainingDate
-        });
-        
-      if (error) console.error("Erro ao fazer upsert no Supabase:", error.message);
-      else console.log("Progresso salvo com sucesso na nuvem!");
-    }
-  } catch (e) {
-    console.error("Erro ao salvar progresso:", e);
-  }
-
-  showToast(`✅ ${ex.name} completo! +${ex.xp} XP`, 'success');
-  spawnParticles();
-
-  if (didLevel) {
-    setTimeout(() => showLevelUp(state.level), 800);
-  }
-
-  const newAchs = checkAchievements();
-  if (newAchs.length > 0) {
-    await registrarConquistaOnline(newAchs[0].title);
-    setTimeout(() => showAchievementFlash(newAchs[0]), didLevel ? 3500 : 1000);
-  }
-
-  checkWeeklyMissions();
-  if (typeof renderTab === 'function') {
-    renderTab(currentTab);
   }
 }
 
@@ -659,6 +602,7 @@ function showToast(msg, type = 'default') {
   toastTimeout = setTimeout(() => { el.innerHTML = ''; }, 3000);
 }
 
+// ===== VISUAL PARTICLES =====
 function spawnParticles() {
   const container = document.getElementById('particles');
   if (!container) return;
@@ -744,7 +688,7 @@ function getRankingPlayers(scope) {
   return players;
 }
 
-// ===== RENDERING =====
+// ===== NAVIGATION & RENDER =====
 let currentTab = 'home';
 let missionSubTab = 'daily';
 let rankingSubTab = 'regional';
@@ -1049,7 +993,6 @@ function resetGame() {
     localStorage.removeItem('fitnessRPG_state');
     state = { ...DEFAULT_STATE };
     
-    // Força o salvamento imediato do estado limpo na nuvem e local
     saveState(); 
     
     if (typeof renderTab === 'function') {
@@ -1060,13 +1003,11 @@ function resetGame() {
 }
 
 // ==========================================
-// 1. DECLARAÇÃO DE VARIÁVEIS GLOBAIS DO DOM
-// (Coloque isso logo acima da função init se elas já não existirem globalmente)
+// INITIALIZATION AND AUTHFUNCTIONS
 // ==========================================
 let splash;
 let app;
 
-// ===== INIT CORRIGIDO =====
 function updateOnline() {
     const bar = document.getElementById('offline-bar');
     if (bar) {
@@ -1076,7 +1017,6 @@ function updateOnline() {
 }
 
 function init() {
-    // 2. RECUPERA O PROGRESSO SALVO ASSIM QUE O SITE ABRE
     const salvo = localStorage.getItem('fitnessRPG_state');
     if (salvo) {
         try {
@@ -1089,26 +1029,21 @@ function init() {
         state = { ...DEFAULT_STATE };
     }
 
-    // 3. REGISTRO DO SERVICE WORKER
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js').catch(() => {});
     }
 
-    // 4. MAPEAMENTO DOS ELEMENTOS DO DOM (RESOLVE O PROBLEMA DE ESCOPO)
     splash = document.getElementById('splash');
     app = document.getElementById('app');
 
-    // 5. CONFIGURAÇÃO DOS OUVINTES DE REDE
     window.addEventListener('online', updateOnline);
     window.addEventListener('offline', updateOnline);
     updateOnline();
 
-    // 6. EXIBIÇÃO DA TELA E RENDERIZAÇÃO INICIAL
     setTimeout(() => {
         if (splash) splash.classList.add('hidden');
         if (app) app.style.display = 'flex';
         
-        // Renderiza a Home já preenchida com o progresso que foi carregado no passo 2
         renderTab('home');
 
         setTimeout(() => {
@@ -1119,7 +1054,6 @@ function init() {
 
 document.addEventListener('DOMContentLoaded', init);
 
-// ===== FUNÇÕES DE AUTENTICAÇÃO CORRIGIDAS =====
 async function handleSignIn() {
   const email = document.getElementById('auth-email').value;
   const password = document.getElementById('auth-password').value;
