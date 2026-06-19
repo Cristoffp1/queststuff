@@ -398,7 +398,7 @@ function closeMissionScreen() {
   document.getElementById('mission-screen')?.classList.remove('open');
 }
 
-// Transformado em ASYNC para permitir await no salvamento online correto
+// ===== MISSION LOGIC CORRIGIDA =====
 async function completeMission() {
   const ex = activeMission;
   closeMissionScreen();
@@ -435,14 +435,58 @@ async function completeMission() {
     state.weekConsistency = Math.min(3, (state.weekConsistency || 0) + 1);
   }
 
-  state.xp += ex.xp;
-  state.totalXP += ex.xp;
-  let didLevel = false;
-  while (state.xp >= Math.floor(100 * Math.pow(state.level, 1.5))) {
-    state.xp -= Math.floor(100 * Math.pow(state.level, 1.5));
-    state.level++;
-    didLevel = true;
+  // CORREÇÃO: Usando a sua função addXP que centraliza a subida de nível de forma correta
+  let didLevel = addXP(ex.xp);
+
+  // Salvamento aguarda a resposta para evitar condições de corrida (Race Conditions)
+  try {
+    localStorage.setItem('fitnessRPG_state', JSON.stringify(state));
+    
+    const { data: sessionData } = await supabase.auth.getSession();
+    const user = sessionData?.session?.user;
+
+    if (user) {
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          xp: state.xp,
+          nivel: state.level,
+          moedas: state.moedas || 0,
+          streak: state.streak || 0,
+          total_missions: state.totalMissions || 0,
+          max_day_missions: state.maxDayMissions || 0,
+          last_training_date: state.lastTrainingDate
+        });
+        
+      if (error) console.error("Erro ao fazer upsert no Supabase:", error.message);
+      else console.log("Progresso salvo com sucesso na nuvem!");
+    }
+  } catch (e) {
+    console.error("Erro ao salvar progresso:", e);
   }
+
+  showToast(`✅ ${ex.name} completo! +${ex.xp} XP`, 'success');
+  spawnParticles();
+
+  if (didLevel) {
+    setTimeout(() => showLevelUp(state.level), 800);
+  }
+
+  const newAchs = checkAchievements();
+  if (newAchs.length > 0) {
+    await registrarConquistaOnline(newAchs[0].title);
+    setTimeout(() => showAchievementFlash(newAchs[0]), didLevel ? 3500 : 1000);
+  }
+
+  checkWeeklyMissions();
+  
+  // CORREÇÃO: Evita erro de escopo checando se window.currentTab existe de forma segura
+  if (typeof renderTab === 'function') {
+    renderTab(typeof currentTab !== 'undefined' ? currentTab : 'home');
+  }
+}
+
 
   // Salvamento agora aguarda a resposta para evitar condições de corrida (Race Conditions)
   try {
