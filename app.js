@@ -1184,11 +1184,7 @@ async function handleSignUp() {
   if (error) {
     alert('Erro ao cadastrar: ' + error.message);
   } else {
-    mostrarModalQuestStuff('Conta criada com sucesso! Faça login para começar a jogar.');
-  }
-}
-
-function mostrarModalQuestStuff(mensagem) {
+    function mostrarModalQuestStuff(mensagem) {
   const modal = document.getElementById('custom-modal');
   const modalMessage = document.getElementById('modal-message');
   const modalCloseBtn = document.getElementById('modal-close-btn');
@@ -1201,3 +1197,4 @@ function mostrarModalQuestStuff(mensagem) {
       modal.style.display = 'none';
     };
   }
+}
