@@ -111,7 +111,6 @@ const DEFAULT_STATE = {
 
 let state = { ...DEFAULT_STATE };
 let currentTab = 'home';
-
 // ========================================================
 // CONTROLE DE SESSÃO E AUTENTICAÇÃO
 // ========================================================
@@ -474,3 +473,47 @@ window.handleSignUp = async function() {
     const { error } = await supabase.auth.signUp({ email, password });
     if (error) alert('Erro: ' + error.message);
     else alert('Cadastro realizado! Verifique seu e-mail.');
+}
+
+window.handleSignOut = async function() {
+    await supabase.auth.signOut();
+    localStorage.removeItem('fitnessRPG_state');
+    window.location.reload();
+}
+
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  if (el) {
+    el.innerHTML = `<div style="background:#4CAF50; color:white; padding:12px; border-radius:8px; text-align:center;">${msg}</div>`;
+    setTimeout(() => { el.innerHTML = ''; }, 3000);
+  }
+}
+
+function showLevelUp(level) {
+  const el = document.getElementById('levelup-overlay');
+  const num = document.getElementById('levelup-num');
+  if (num) num.textContent = level;
+  if (el) el.style.display = 'flex';
+}
+
+window.closeLevelUp = function() {
+  const el = document.getElementById('levelup-overlay');
+  if (el) el.style.display = 'none';
+}
+
+// ===== INITIALIZATION =====
+function init() {
+    const bar = document.getElementById('offline-bar');
+    window.addEventListener('online', () => bar?.classList.remove('show'));
+    window.addEventListener('offline', () => bar?.classList.add('show'));
+
+    setTimeout(() => {
+        const splash = document.getElementById('splash');
+        const app = document.getElementById('app');
+        if (splash) splash.style.display = 'none';
+        if (app) app.style.display = 'flex';
+        renderTab('home');
+    }, 1200);
+}
+
+document.addEventListener('DOMContentLoaded', init);
