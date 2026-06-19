@@ -1177,31 +1177,32 @@ function init() {
 document.addEventListener('DOMContentLoaded', init);
 
 // ===== FUNÇÕES DE AUTENTICAÇÃO E SALVAMENTO CORRIGIDAS =====
-async function handleSignUp() {
+async function handleSignIn() {
   const email = document.getElementById('auth-email').value;
   const password = document.getElementById('auth-password').value;
-  const { error } = await supabase.auth.signUp({ email, password });
+  
+  if (!email || !password) {
+    alert('Por favor, preencha o e-mail e a senha.');
+    return;
+  }
+
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   
   if (error) {
-    alert('Erro ao cadastrar: ' + error.message);
+    alert('Erro ao entrar: ' + error.message);
   } else {
-    // Chama a função global do modal personalizado
-    mostrarModalQuestStuff("Cadastro realizado com sucesso! Divirta-se no Quest Stuff.");
+    mostrarModalQuestStuff("Login realizado com sucesso! Bem-vindo de volta.");
+    window.location.reload(); // Recarrega para limpar o cache antigo e puxar os dados novos
   }
 }
 
-// Deixe a função do modal escopada globalmente para poder usar em qualquer lugar do app
-function mostrarModalQuestStuff(mensagem) {
-  const modal = document.getElementById('custom-modal');
-  const modalMessage = document.getElementById('modal-message');
-  const modalCloseBtn = document.getElementById('modal-close-btn');
-
-  if (modal && modalMessage) {
-    modalMessage.innerText = mensagem;
-    modal.style.display = 'flex';
-
-    modalCloseBtn.onclick = function() {
-      modal.style.display = 'none';
-    };
+async function handleSignOut() {
+  const { error } = await supabase.auth.signOut();
+  if (error) {
+    alert('Erro ao sair: ' + error.message);
+  } else {
+    localStorage.removeItem('fitnessRPG_state'); // Limpa o treino local para não dar conflito
+    alert('Você saiu da conta!');
+    window.location.reload(); // Recarrega para voltar à tela de login limpa
   }
 }
