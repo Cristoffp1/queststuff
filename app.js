@@ -4,7 +4,7 @@
 const SUPABASE_URL = 'https://flnzycipcdqtwcyujzqe.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZsbnp5Y2lwY2RxdHdjeXVqenFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MjA5MzcsImV4cCI6MjA5NzE5NjkzN30.plqw_CtlaJmChDlnkTfHN9MUPVn0IK7Ty_WfujM3ICo'; 
 
-// Inicializa o cliente do Supabase diretamente no objeto window
+// Inicializa o cliente do Supabase
 window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ===== EXERCISES DATA =====
@@ -56,7 +56,7 @@ const EXERCISES = [
     base: 15, max: 40, sets: 2, unit: 'elevações', type: 'reps', cat: 'força',
     muscles: ['Glúteos', 'Isquiotibial', 'Lombar'], pose: 'glute',
     mColor: '#ef4444', xp: 60, diff: 'Fácil',
-    steps: ['Deite de costas com os joelhos dobrados','Pés apoiados no chão na largura dos ombros','Empurre os quadris para cima contraindo os glúteos','Mantenha por 1 segundo no topo','Desça devagar sem encostar no chão']
+    steps: ['Deite de costas com os joelhos dobrados','Pés apoiados no chão na largura dos ombros','Empurde os quadris para cima contraindo os glúteos','Mantenha por 1 segundo no topo','Desça devagar sem encostar no chão']
   },
   {
     id: 'd8', name: 'Tríceps em Casa', icon: '🪑',
@@ -71,7 +71,7 @@ const WEEKLY_MISSIONS = [
   { id: 'w1', title: 'Semana do Guerreiro', desc: 'Treine pelo menos 5 dias esta semana', xp: 500, diff: 'Épico', progress: () => state.weekDaysTraining, total: 5 },
   { id: 'w2', title: 'Rei das Flexões', desc: 'Acumule 60 flexões esta semana', xp: 350, diff: 'Difícil', progress: () => state.weekFlexoes, total: 60 },
   { id: 'w3', title: 'Cardio Consistente', desc: 'Complete 4 missões de cardio esta semana', xp: 400, diff: 'Difícil', progress: () => state.weekCardio, total: 4 },
-  { id: 'w4', title: 'Mestre da Consistência', desc: 'Complete 3 missões por dia in 3 dias', xp: 550, diff: 'Épico', progress: () => state.weekConsistency, total: 3 }
+  { id: 'w4', title: 'Mestre da Consistência', desc: 'Complete 3 missões por dia em 3 dias', xp: 550, diff: 'Épico', progress: () => state.weekConsistency, total: 3 }
 ];
 
 const SPECIAL_MISSIONS = [
@@ -94,13 +94,7 @@ const ACHIEVEMENTS = [
   { id: 'a9', icon: '⭐', title: 'Nível 5', desc: 'Alcance o nível 5', check: s => s.level >= 5 },
   { id: 'a10', icon: '🌠', title: 'Nível 10', desc: 'Alcance o nível 10', check: s => s.level >= 10 },
   { id: 'a11', icon: '💎', title: 'Nível 25', desc: 'Alcance o nível 25', check: s => s.level >= 25 },
-  { id: 'a12', icon: '👑', title: 'Nível 50', desc: 'Alcance o nível 50', check: s => s.level >= 50 },
-  { id: 'a13', icon: '💥', title: 'Mestre das Flexões', desc: '200 flexões totais', check: s => s.totalFlexoes >= 200 },
-  { id: 'a14', icon: '🦾', title: 'Pernas de Titânio', desc: '300 agachamentos totais', check: s => s.totalAgacham >= 300 },
-  { id: 'a15', icon: '🛡️', title: 'Guardião do Core', desc: '600s de prancha total', check: s => s.totalPrancha >= 600 },
-  { id: 'a16', icon: '🧠', title: 'Guerreiro da Disciplina', desc: '5 missões em um dia', check: s => s.maxDayMissions >= 5 },
-  { id: 'a17', icon: '📈', title: 'Progressão Real', desc: '10 missões seguidas concluídas', check: s => s.maxConsecutive >= 10 },
-  { id: 'a18', icon: '🌈', title: 'Lendário', desc: 'Nível 50 e 200 missões', check: s => s.level >= 50 && s.totalMissions >= 200 }
+  { id: 'a12', icon: '👑', title: 'Nível 50', desc: 'Alcance o nível 50', check: s => s.level >= 50 }
 ];
 
 // ===== STATE =====
@@ -112,11 +106,11 @@ const DEFAULT_STATE = {
   totalFlexoes: 0, totalAgacham: 0, totalPrancha: 0,
   maxDayMissions: 0, maxConsecutive: 0, consecutiveRun: 0,
   completedWeekly: [], completedSpecial: [], unlockedAchievements: [],
-  earlyBird: false, trioPerfect: false,
-  todayCategories: []
+  earlyBird: false, trioPerfect: false, todayCategories: []
 };
 
 let state = { ...DEFAULT_STATE };
+let currentTab = 'home';
 
 // ========================================================
 // CONTROLE DE SESSÃO E AUTENTICAÇÃO
@@ -136,27 +130,23 @@ supabase.auth.onAuthStateChange(async (event, session) => {
     
     await loadState(session.user);
   } else {
-    if (authContainer) authContainer.style.display = 'block';
+    if (authContainer) authContainer.style.display = 'flex';
     if (userBar) userBar.style.display = 'none';
     if (btnLogout) btnLogout.style.display = 'none';
 
     const savedLocal = localStorage.getItem('fitnessRPG_state');
     if (savedLocal) {
-        try {
-            state = JSON.parse(savedLocal);
-        } catch(e) {
-            state = { ...DEFAULT_STATE };
-        }
+        try { state = JSON.parse(savedLocal); } catch(e) { state = { ...DEFAULT_STATE }; }
     } else {
         state = { ...DEFAULT_STATE };
     }
     
-    if (typeof renderTab === 'function') renderTab(currentTab);
+    renderTab(currentTab);
   }
 });
 
 // ========================================================
-// SINCRONIZAÇÃO ONLINE (PROFILES & PROGRESS)
+// SINCRONIZAÇÃO ONLINE (profiles EM MINÚSCULO)
 // ========================================================
 
 async function loadState(user) {
@@ -164,7 +154,7 @@ async function loadState(user) {
     if (!user) return;
 
     let { data: profile, error } = await supabase
-      .from('Profiles')
+      .from('profiles')
       .select('*')
       .eq('id', user.id)
       .single();
@@ -183,7 +173,7 @@ async function loadState(user) {
       };
 
       const { error: insertError } = await supabase
-        .from('Profiles')
+        .from('profiles')
         .insert([novoPerfil]);
 
       if (insertError) throw insertError;
@@ -201,10 +191,10 @@ async function loadState(user) {
     state.lastTrainingDate = profile.last_training_date || null;
 
     checkDayReset();
-    if (typeof renderTab === 'function') renderTab(currentTab);
+    renderTab(currentTab);
 
   } catch (e) {
-    console.error("Erro ao carregar dados do Supabase, usando local:", e);
+    console.error("Erro no Supabase, usando local:", e);
     const saved = localStorage.getItem('fitnessRPG_state');
     if (saved) state = { ...DEFAULT_STATE, ...JSON.parse(saved) };
   }
@@ -214,7 +204,7 @@ async function saveState() {
     try {
         localStorage.setItem('fitnessRPG_state', JSON.stringify(state));
     } catch (err) {
-        console.error("Erro ao salvar no localStorage:", err);
+        console.error("Erro localstorage:", err);
     }
 
     try {
@@ -223,7 +213,7 @@ async function saveState() {
         
         if (user) {
             await supabase
-                .from('Profiles')
+                .from('profiles')
                 .upsert({
                     id: user.id,
                     xp: state.xp,
@@ -236,26 +226,8 @@ async function saveState() {
                 });
         }
     } catch (e) {
-        console.error("Erro ao salvar dados online:", e);
+        console.error("Erro ao salvar online:", e);
     }
-}
-
-async function registrarConquistaOnline(nomeConquista) {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    const user = session?.user;
-    if (user) {
-      await supabase
-        .from('achievements')
-        .insert([{
-          user_id: user.id,
-          conquista: nomeConquista,
-          data: new Date().toISOString()
-        }]);
-    }
-  } catch (e) {
-    console.error("Erro ao registrar conquista online:", e);
-  }
 }
 
 function checkDayReset() {
@@ -268,9 +240,6 @@ function checkDayReset() {
       } else {
         state.streak = 0;
       }
-      if (state.completedToday.length >= state.maxDayMissions) {
-        state.maxDayMissions = Math.max(state.maxDayMissions, state.completedToday.length);
-      }
     }
     state.completedToday = [];
     state.todayCategories = [];
@@ -279,10 +248,10 @@ function checkDayReset() {
   }
 }
 
-// ===== XP / LEVEL =====
 function xpForLevel(lv) {
   return Math.floor(100 * Math.pow(lv, 1.5));
 }
+
 function addXP(amount) {
   state.xp += amount;
   state.totalXP += amount;
@@ -295,14 +264,13 @@ function addXP(amount) {
   return didLevel;
 }
 
-// ===== DIFFICULTY SCALING =====
 function scaledTarget(ex) {
   const factor = Math.min(1, state.totalMissions / 50);
   const range = ex.max - ex.base;
   return Math.floor(ex.base + range * factor);
 }
 
-// ===== MISSION CONTROLS =====
+// ===== MISSION ACTIONS =====
 let activeMission = null;
 let currentSet = 1;
 let currentReps = 0;
@@ -310,10 +278,10 @@ let timerInterval = null;
 let restInterval = null;
 let restRemaining = 30;
 
-function startMission(id) {
+window.startMission = function(id) {
   const ex = EXERCISES.find(e => e.id === id);
   if (!ex) return;
-  activeMission = { ...ex, target: scaledTarget(ex), currentSet: 1, currentReps: 0 };
+  activeMission = { ...ex, target: scaledTarget(ex) };
   currentSet = 1; currentReps = 0;
   openMissionScreen();
 }
@@ -323,175 +291,58 @@ function openMissionScreen() {
   const target = ex.target;
   const el = document.getElementById('mission-screen');
   if (!el) return;
-  el.innerHTML = '';
 
   el.innerHTML = `
-    <div style="padding-bottom:30px">
-      <div class="mission-screen-header">
-        <button class="back-btn" onclick="closeMissionScreen()">X</button>
-        <div>
-          <div class="mission-screen-title">${ex.icon} ${ex.name}</div>
-          <div class="mission-screen-series">Série ${currentSet} de ${ex.sets}</div>
-        </div>
+    <div style="padding: 20px; padding-bottom:100px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h2>${ex.icon} ${ex.name}</h2>
+        <button style="padding:8px 14px; background:#f44336; color:white; border:none; border-radius:6px; cursor:pointer;" onclick="closeMissionScreen()">Sair</button>
       </div>
-      <div class="figure-container">
-        <img src="./${ex.pose}.png" class="exercise-image" alt="${ex.name}">
+      <h3 style="color:var(--muted)">Série ${currentSet} de ${ex.sets}</h3>
+      
+      <div style="text-align:center; margin:30px 0;">
+        <h1 id="prog-label" style="font-size:48px; margin:0;">${ex.type === 'timer' ? target : '0'}</h1>
+        <p style="color:var(--muted)">de ${target} ${ex.unit}</p>
       </div>
-      <div class="muscle-tags">
-        ${ex.muscles.map(m => `<span class="muscle-tag" style="background:${ex.mColor}22;color:${ex.mColor}">${m}</span>`).join('')}
-      </div>
-      <div class="progress-ring-wrap">
-        <svg viewBox="0 0 120 120" width="130" height="130">
-          <circle cx="60" cy="60" r="50" fill="none" stroke="#1E2040" stroke-width="10"/>
-          <circle id="prog-ring" cx="60" cy="60" r="50" fill="none" stroke="${ex.mColor}" stroke-width="10"
-            stroke-dasharray="314.16" stroke-dashoffset="314.16" stroke-linecap="round"
-            transform="rotate(-90 60 60)" style="transition:stroke-dashoffset 0.3s"/>
-        </svg>
-        <div class="progress-ring-label" id="prog-label">${ex.type === 'timer' ? target : '0'}</div>
-        <div class="progress-ring-sub">${ex.type === 'timer' ? 'segundos restantes' : `de ${target} ${ex.unit}`}</div>
-      </div>
-      <div class="series-bars">
-        <div class="series-bar-label">Progresso das séries</div>
-        <div class="series-dots">
-          ${Array.from({length: ex.sets}, (_, i) => `<div class="series-dot ${i+1 < currentSet ? 'done' : i+1 === currentSet ? 'active' : ''}"></div>`).join('')}
-        </div>
-      </div>
-      <div class="action-area">
+
+      <div style="text-align:center; margin-bottom:30px;">
         ${ex.type === 'reps'
-          ? `<button class="rep-btn pulse-btn" id="rep-btn" onclick="addRep()">+1 ${ex.unit.split(' ')[0].toUpperCase()}</button>`
-          : `<button class="btn-primary" onclick="startTimer()" id="timer-start-btn">▶ Iniciar Timer</button>`
+          ? `<button style="padding:20px 40px; font-size:20px; border-radius:50px; background:#4CAF50; color:white; border:none; cursor:pointer; font-weight:bold;" onclick="addRep()">+1 Concluído</button>`
+          : `<button style="padding:16px 32px; font-size:16px; border-radius:8px; background:#2196F3; color:white; border:none; cursor:pointer;" onclick="startTimer()" id="timer-start-btn">▶ Iniciar Timer</button>`
         }
       </div>
-      <div class="steps-container">
-        <div class="steps-title">Como executar</div>
-        <ul class="steps-list">
-          ${ex.steps.map((s, i) => `<li><span class="step-num">${i+1}</span><span>${s}</span></li>`).join('')}
-        </ul>
+
+      <div>
+        <h4>Como executar:</h4>
+        <ul>${ex.steps.map(s => `<li style="margin-bottom:8px;">${s}</li>`).join('')}</ul>
       </div>
     </div>
   `;
   el.classList.add('open');
-  if (ex.type === 'timer') updateRing(0, target);
 }
 
-function deleteMissionScreen() {
+window.closeMissionScreen = function() {
   clearInterval(timerInterval);
   document.getElementById('mission-screen')?.classList.remove('open');
 }
 
-// ===== MISSION LOGIC FIX =====
-async function completeMission() {
-  const ex = activeMission;
-  document.getElementById('mission-screen')?.classList.remove('open');
-
-  const today = new Date().toDateString();
-  const hour = new Date().getHours();
-
-  if (!state.completedToday.includes(ex.id)) {
-    state.completedToday.push(ex.id);
-  }
-  state.lastTrainingDate = today;
-  state.totalMissions++;
-  state.consecutiveRun++;
-  state.maxConsecutive = Math.max(state.maxConsecutive, state.consecutiveRun);
-  state.maxDayMissions = Math.max(state.maxDayMissions, state.completedToday.length);
-
-  if (hour < 9) state.earlyBird = true;
-
-  if (!state.todayCategories.includes(ex.cat)) {
-    state.todayCategories.push(ex.cat);
-  }
-  if (state.todayCategories.length >= 3) state.trioPerfect = true;
-
-  if (ex.id === 'd1') state.totalFlexoes += ex.target;
-  if (ex.id === 'd2') state.totalAgacham += ex.target;
-  if (ex.id === 'd3') state.totalPrancha += ex.target;
-  if (ex.cat === 'cardio') state.weekCardio++;
-  if (ex.id === 'd1') state.weekFlexoes += ex.target;
-
-  checkSpecialMissions();
-
-  state.weekDaysTraining = Math.min(7, (state.weekDaysTraining || 0) + (state.completedToday.length === 1 ? 1 : 0));
-  if (state.completedToday.length >= 3) {
-    state.weekConsistency = Math.min(3, (state.weekConsistency || 0) + 1);
-  }
-
-  let didLevel = addXP(ex.xp);
-
-  try {
-    localStorage.setItem('fitnessRPG_state', JSON.stringify(state));
-    
-    const { data: sessionData } = await supabase.auth.getSession();
-    const user = sessionData?.session?.user;
-
-    if (user) {
-      const { error } = await supabase
-        .from('Profiles')
-        .upsert({
-          id: user.id,
-          xp: state.xp,
-          nivel: state.level,
-          moedas: state.moedas || 0,
-          streak: state.streak || 0,
-          total_missions: state.totalMissions || 0,
-          max_day_missions: state.maxDayMissions || 0,
-          last_training_date: state.lastTrainingDate
-        });
-        
-      if (error) console.error("Erro ao fazer upsert no Supabase:", error.message);
-    }
-  } catch (e) {
-    console.error("Erro ao salvar progresso:", e);
-  }
-
-  showToast(`✅ ${ex.name} completo! +${ex.xp} XP`, 'success');
-  spawnParticles();
-
-  if (didLevel) {
-    setTimeout(() => showLevelUp(state.level), 800);
-  }
-
-  const newAchs = checkAchievements();
-  if (newAchs.length > 0) {
-    await registrarConquistaOnline(newAchs[0].title);
-    setTimeout(() => showAchievementFlash(newAchs[0]), didLevel ? 3500 : 1000);
-  }
-
-  checkWeeklyMissions();
-  
-  if (typeof renderTab === 'function') {
-    renderTab(typeof currentTab !== 'undefined' ? currentTab : 'home');
-  }
-}
-
-function updateRing(current, total) {
-  const ring = document.getElementById('prog-ring');
-  const label = document.getElementById('prog-label');
-  if (!ring || !label) return;
-  const circumference = 314.16;
-  const pct = Math.min(current / total, 1);
-  ring.style.strokeDashoffset = circumference * (1 - pct);
-  if (activeMission.type === 'timer') {
-    label.textContent = total - current;
-  } else {
-    label.textContent = current;
-  }
-}
-
-function addRep() {
+window.addRep = function() {
   currentReps++;
-  updateRing(currentReps, activeMission.target);
+  const label = document.getElementById('prog-label');
+  if (label) label.textContent = currentReps;
   if (currentReps >= activeMission.target) finishSet();
 }
 
-function startTimer() {
+window.startTimer = function() {
   const btn = document.getElementById('timer-start-btn');
   if (btn) btn.style.display = 'none';
   let elapsed = 0;
   const total = activeMission.target;
+  const label = document.getElementById('prog-label');
+  
   timerInterval = setInterval(() => {
     elapsed++;
-    updateRing(elapsed, total);
+    if (label) label.textContent = total - elapsed;
     if (elapsed >= total) {
       clearInterval(timerInterval);
       finishSet();
@@ -513,11 +364,14 @@ function openRestScreen() {
   restRemaining = 30;
   const rs = document.getElementById('rest-screen');
   if (!rs) return;
-  rs.classList.add('show');
-  updateRestRing(30);
+  rs.style.display = 'flex';
+  
+  const count = document.getElementById('rest-count');
+  if (count) count.textContent = restRemaining;
+
   restInterval = setInterval(() => {
     restRemaining--;
-    updateRestRing(restRemaining);
+    if (count) count.textContent = restRemaining;
     if (restRemaining <= 0) {
       clearInterval(restInterval);
       nextSet();
@@ -525,212 +379,38 @@ function openRestScreen() {
   }, 1000);
 }
 
-function updateRestRing(remaining) {
-  const prog = document.getElementById('rest-progress');
-  const count = document.getElementById('rest-count');
-  if (!prog || !count) return;
-  const pct = remaining / 30;
-  prog.style.strokeDashoffset = 326.7 * (1 - pct);
-  count.textContent = remaining;
-}
-
-function skipRest() {
+window.skipRest = function() {
   clearInterval(restInterval);
   nextSet();
 }
 
 function nextSet() {
-  document.getElementById('rest-screen')?.classList.remove('show');
+  document.getElementById('rest-screen').style.display = 'none';
   currentReps = 0;
   openMissionScreen();
 }
 
-function checkWeeklyMissions() {
-  WEEKLY_MISSIONS.forEach(m => {
-    if (!state.completedWeekly.includes(m.id)) {
-      if (m.progress() >= m.total) {
-        state.completedWeekly.push(m.id);
-        addXP(m.xp);
-        showToast(`🏆 Missão semanal "${m.title}" completa! +${m.xp} XP`, 'gold');
-      }
-    }
-  });
-}
+async function completeMission() {
+  const ex = activeMission;
+  document.getElementById('mission-screen')?.classList.remove('open');
 
-function checkSpecialMissions() {
-  SPECIAL_MISSIONS.forEach(m => {
-    if (!state.completedSpecial.includes(m.id) && m.check()) {
-      state.completedSpecial.push(m.id);
-      addXP(m.xp);
-      showToast(`⭐ Missão especial "${m.title}" completa! +${m.xp} XP`, 'gold');
-    }
-  });
-}
-
-function checkAchievements() {
-  const newOnes = [];
-  ACHIEVEMENTS.forEach(a => {
-    if (!state.unlockedAchievements.includes(a.id) && a.check(state)) {
-      state.unlockedAchievements.push(a.id);
-      newOnes.push(a);
-    }
-  });
-  return newOnes;
-}
-
-// ===== FEEDBACK =====
-let toastTimeout = null;
-function showToast(msg, type = 'default') {
-  const el = document.getElementById('toast');
-  if (!el) return;
-  el.innerHTML = `<div class="toast-inner ${type}">${msg}</div>`;
-  if (toastTimeout) clearTimeout(toastTimeout);
-  toastTimeout = setTimeout(() => { el.innerHTML = ''; }, 3000);
-}
-
-// ===== VISUAL PARTICLES =====
-function spawnParticles() {
-  const container = document.getElementById('particles');
-  if (!container) return;
-  const colors = ['#7C3AED', '#F59E0B', '#10B981', '#EF4444', '#00AAFF', '#FF6B6B', '#A78BFA'];
-  for (let i = 0; i < 18; i++) {
-    const p = document.createElement('div');
-    p.className = 'particle';
-    const angle = Math.random() * Math.PI * 2;
-    const dist = 80 + Math.random() * 120;
-    p.style.cssText = `
-      left: ${40 + Math.random() * 20}%;
-      top: ${30 + Math.random() * 20}%;
-      background: ${colors[Math.floor(Math.random() * colors.length)]};
-      --tx: ${Math.cos(angle) * dist}px;
-      --ty: ${Math.sin(angle) * dist}px;
-      animation-delay: ${Math.random() * 0.3}s;
-    `;
-    container.appendChild(p);
-    setTimeout(() => p.remove(), 1500);
+  if (!state.completedToday.includes(ex.id)) {
+    state.completedToday.push(ex.id);
   }
+  state.lastTrainingDate = new Date().toDateString();
+  state.totalMissions++;
+
+  let didLevel = addXP(ex.xp);
+  await saveState();
+
+  showToast(`✅ ${ex.name} completo! +${ex.xp} XP`);
+  if (didLevel) setTimeout(() => showLevelUp(state.level), 800);
+  
+  renderTab(currentTab);
 }
 
-function showLevelUp(level) {
-  const el = document.getElementById('levelup-overlay');
-  const num = document.getElementById('levelup-num');
-  if (num) num.textContent = level;
-  el?.classList.add('show');
-  spawnParticles();
-}
-
-// ===== AUTH ACTIONS GLOBALS =====
-
-window.handleSignIn = async function() {
-    const email = document.getElementById('auth-email').value;
-    const password = document.getElementById('auth-password').value;
-
-    if (!email || !password) {
-        alert('Por favor, preencha o e-mail e a senha.');
-        return;
-    }
-
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-    if (error) {
-        alert('Erro ao entrar: ' + error.message);
-    } else {
-        alert("Login realizado com sucesso!");
-    }
-}
-
-window.handleSignUp = async function() {
-    const email = document.getElementById('auth-email').value;
-    const password = document.getElementById('auth-password').value;
-
-    if (!email || !password) {
-        alert('Por favor, preencha o e-mail e a senha.');
-        return;
-    }
-
-    const { error } = await supabase.auth.signUp({ email, password });
-
-    if (error) {
-        alert('Erro ao registrar: ' + error.message);
-    } else {
-        alert('Cadastro realizado! Se divertir no Quest Stuff.');
-    }
-}
-
-window.handleSignOut = async function() {
-    try {
-        const { error } = await supabase.auth.signOut();
-        if (error) throw error;
-        
-        localStorage.removeItem('fitnessRPG_state'); 
-        alert("Deslogado com sucesso!");
-        window.location.reload();
-    } catch (error) {
-        console.error('Erro ao sair:', error.message);
-    }
-}
-
-function closeLevelUp() {
-  document.getElementById('levelup-overlay')?.classList.remove('show');
-}
-
-function showAchievementFlash(ach) {
-  const el = document.getElementById('ach-flash');
-  const icon = document.getElementById('ach-flash-icon');
-  const title = document.getElementById('ach-flash-title');
-  if (icon) icon.textContent = ach.icon;
-  if (title) title.textContent = ach.title;
-  el?.classList.add('show');
-  setTimeout(() => el?.classList.remove('show'), 3000);
-}
-
-// ===== RANKING DATA =====
-function getRankingPlayers(scope) {
-  const bases = {
-    regional: [
-      { name: 'Bruno Lima', avatar: '🦁', level: 8, xp: 3200 },
-      { name: 'Carla Mendes', avatar: '🐯', level: 7, xp: 2800 },
-      { name: 'Diego Costa', avatar: '🦊', level: 6, xp: 2400 },
-      { name: 'Fernanda Reis', avatar: '🐺', level: 5, xp: 1900 },
-      { name: 'Gabriel Souza', avatar: '🦅', level: 4, xp: 1500 },
-      { name: 'Helena Martins', avatar: '🦋', level: 3, xp: 1100 },
-      { name: 'Igor Ferreira', avatar: '🐉', level: 2, xp: 700 },
-      { name: 'Julia Santos', avatar: '🦄', level: 1, xp: 300 }
-    ],
-    nacional: [
-      { name: 'André Oliveira', avatar: '🔥', level: 15, xp: 8500 },
-      { name: 'Beatriz Cruz', avatar: '⚡', level: 12, xp: 6200 },
-      { name: 'Carlos Neto', avatar: '💎', level: 10, xp: 5100 },
-      { name: 'Daniela Pires', avatar: '🌟', level: 9, xp: 4300 },
-      { name: 'Eduardo Alves', avatar: '🏆', level: 8, xp: 3800 },
-      { name: 'Flavia Rocha', avatar: '🎯', level: 7, xp: 3100 },
-      { name: 'Gustavo Lima', avatar: '⚔️', level: 6, xp: 2500 },
-      { name: 'Ingrid Vale', avatar: '🛡️', level: 5, xp: 1800 }
-    ],
-    mundial: [
-      { name: 'Alex Storm', avatar: '🌪️', level: 50, xp: 85000 },
-      { name: 'Maria Fuerte', avatar: '💥', level: 42, xp: 62000 },
-      { name: 'Kai Thunder', avatar: '⚡', level: 35, xp: 48000 },
-      { name: 'Yuki Blade', avatar: '🗡️', level: 28, xp: 35000 },
-      { name: 'Camila Power', avatar: '💪', level: 22, xp: 25000 },
-      { name: 'Ruan Force', avatar: '🔥', level: 18, xp: 18000 },
-      { name: 'Priya Wins', avatar: '🏆', level: 15, xp: 12000 },
-      { name: 'Luca Speed', avatar: '💨', level: 10, xp: 7000 }
-    ]
-  };
-  const players = [...(bases[scope] || bases.regional)];
-  const me = { name: 'Você', avatar: '⚔️', level: state.level, xp: state.totalXP, isMe: true };
-  players.push(me);
-  players.sort((a, b) => b.xp - a.xp);
-  return players;
-}
-
-// ===== NAVIGATION & RENDER =====
-let currentTab = 'home';
-let missionSubTab = 'daily';
-let rankingSubTab = 'regional';
-
-function switchTab(tab) {
+// ===== CONTROLE DAS ABAS =====
+window.switchTab = function(tab) {
   currentTab = tab;
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   renderTab(tab);
@@ -739,221 +419,58 @@ function switchTab(tab) {
 function renderTab(tab) {
   const content = document.getElementById('content');
   if (!content) return;
-  switch (tab) {
-    case 'home': content.innerHTML = renderHome(); break;
-    case 'missions': content.innerHTML = renderMissions(); break;
-    case 'achievements': content.innerHTML = renderAchievements(); break;
-    case 'ranking': content.innerHTML = renderRanking(); break;
-    case 'profile': content.innerHTML = renderProfile(); break;
+  
+  if (tab === 'home') {
+    const xpNeeded = xpForLevel(state.level);
+    const pct = Math.min(100, Math.round((state.xp / xpNeeded) * 100));
+    
+    content.innerHTML = `
+      <h2>Olá, Guerreiro! 👋</h2>
+      <div style="background:var(--card-bg, #151724); padding:16px; border-radius:12px; margin-bottom:20px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+          <span>⭐ Nível ${state.level}</span>
+          <span>${state.xp}/${xpNeeded} XP</span>
+        </div>
+        <div style="background:#1E2040; height:10px; border-radius:5px; overflow:hidden;">
+          <div style="background:#4CAF50; height:100%; width:${pct}%"></div>
+        </div>
+      </div>
+      <h3>Missões de Hoje</h3>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        ${EXERCISES.map(ex => {
+          const done = state.completedToday.includes(ex.id);
+          return `
+            <div style="background:var(--card-bg, #151724); padding:14px; border-radius:10px; display:flex; justify-content:space-between; align-items:center; opacity:${done ? 0.6 : 1}">
+              <div>
+                <strong>${ex.icon} ${ex.name}</strong>
+                <div style="font-size:12px; color:var(--muted, #8b8eaf)">${scaledTarget(ex)} ${ex.unit}</div>
+              </div>
+              ${done ? '<span>✅</span>' : `<button style="padding:8px 14px; background:#4CAF50; color:white; border:none; border-radius:6px; cursor:pointer;" onclick="startMission('${ex.id}')">Iniciar</button>`}
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  } else {
+    content.innerHTML = `<h3 style="text-align:center; color:var(--muted); margin-top:40px;">Aba ${tab.toUpperCase()} pronta para conteúdo.</h3>`;
   }
 }
 
-function renderHome() {
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
-  const xpNeeded = xpForLevel(state.level);
-  const pct = Math.min(100, Math.round((state.xp / xpNeeded) * 100));
-  const todayExercises = EXERCISES.filter(e => !state.completedToday.includes(e.id));
-  const completedExercises = EXERCISES.filter(e => state.completedToday.includes(e.id));
+// ===== AUTH ACTIONS =====
+window.handleSignIn = async function() {
+    const email = document.getElementById('auth-email').value;
+    const password = document.getElementById('auth-password').value;
+    if (!email || !password) return alert('Preencha os campos.');
 
-  return `
-    <div class="home-header">
-      <div>
-        <div class="home-greeting">${greeting}, Guerreiro! 👋</div>
-        <div class="home-name">Quest Stuff</div>
-      </div>
-      <div class="home-avatar">⚔️</div>
-    </div>
-    <div class="card xp-card" style="margin:16px 20px 0">
-      <div class="xp-top">
-        <span class="level-badge">⭐ Nível ${state.level}</span>
-        <span class="xp-nums">${state.xp} / <span>${xpNeeded}</span> XP</span>
-      </div>
-      <div class="xp-bar"><div class="xp-fill" style="width:${pct}%"></div></div>
-    </div>
-    ${state.streak >= 3 ? `<div class="streak-banner">🔥 ${state.streak} dias seguidos! Continue assim!</div>` : ''}
-    <div class="section-title">Missões de Hoje (${state.completedToday.length}/${EXERCISES.length})</div>
-    <div class="mission-grid">
-      ${todayExercises.map(ex => `
-        <div class="mission-item" onclick="startMission('${ex.id}')">
-          <div class="mission-icon">${ex.icon}</div>
-          <div class="mission-info">
-            <div class="mission-name">${ex.name}</div>
-            <div class="mission-meta">${scaledTarget(ex)} ${ex.unit} · ${ex.sets} séries</div>
-            <span class="muscle-tag" style="background:${ex.mColor}22;color:${ex.mColor}">${ex.cat}</span>
-          </div>
-          <div class="mission-xp">+${ex.xp}<br><span style="font-size:10px;color:var(--muted)">XP</span></div>
-        </div>
-      `).join('')}
-      ${completedExercises.map(ex => `
-        <div class="mission-item completed">
-          <div class="mission-icon">${ex.icon}</div>
-          <div class="mission-info">
-            <div class="mission-name">${ex.name}</div>
-            <div class="mission-meta">Concluído ✓</div>
-          </div>
-          <div class="mission-done">✅</div>
-        </div>
-      `).join('')}
-    </div>
-  `;
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) alert('Erro: ' + error.message);
 }
 
-function renderMissions() {
-  const tabs = ['daily', 'weekly', 'special'];
-  const labels = { daily: 'Diárias', weekly: 'Semanais', special: 'Especiais' };
-  return `
-    <div class="missions-header">
-      <div class="missions-title">⚔️ Missões</div>
-      <div class="missions-sub">Escolha seu desafio</div>
-    </div>
-    <div class="tab-pills">
-      ${tabs.map(t => `<button class="pill ${missionSubTab === t ? 'active' : ''}" onclick="switchMissionTab('${t}')">${labels[t]}</button>`).join('')}
-    </div>
-    <div class="missions-list">
-      ${missionSubTab === 'daily' ? renderDailyMissions() : ''}
-      ${missionSubTab === 'weekly' ? renderWeeklyMissions() : ''}
-      ${missionSubTab === 'special' ? renderSpecialMissions() : ''}
-    </div>
-  `;
-}
+window.handleSignUp = async function() {
+    const email = document.getElementById('auth-email').value;
+    const password = document.getElementById('auth-password').value;
+    if (!email || !password) return alert('Preencha os campos.');
 
-function renderDailyMissions() {
-  return EXERCISES.map(ex => {
-    const done = state.completedToday.includes(ex.id);
-    const target = scaledTarget(ex);
-    return `
-      <div class="mission-card ${done ? 'completed' : ''}">
-        <div class="mission-card-header" onclick="toggleMissionCard('mc-${ex.id}')">
-          <div class="mission-icon">${ex.icon}</div>
-          <div style="flex:1">
-            <div style="font-weight:700;font-size:15px">${ex.name}</div>
-            <div style="font-size:12px;color:var(--muted)">${target} ${ex.unit} · ${ex.sets} séries</div>
-          </div>
-          <span class="diff-badge diff-${ex.diff}">${ex.diff}</span>
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
-function renderWeeklyMissions() {
-  return WEEKLY_MISSIONS.map(m => {
-    const done = state.completedWeekly.includes(m.id);
-    const prog = Math.min(m.progress(), m.total);
-    const pct = Math.round((prog / m.total) * 100);
-    return `
-      <div class="weekly-card ${done ? 'completed' : ''}">
-        <div style="font-weight:700;font-size:15px">${m.title}</div>
-        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
-      </div>
-    `;
-  }).join('');
-}
-
-function renderSpecialMissions() {
-  return SPECIAL_MISSIONS.map(m => {
-    const done = state.completedSpecial.includes(m.id);
-    return `
-      <div class="special-card ${done ? 'completed' : ''}">
-        <div style="font-weight:700;font-size:15px">${m.title}</div>
-      </div>
-    `;
-  }).join('');
-}
-
-function toggleMissionCard(id) {
-  const el = document.getElementById(id);
-  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
-}
-
-function switchMissionTab(tab) {
-  missionSubTab = tab;
-  renderTab('missions');
-}
-
-function renderAchievements() {
-  const unlocked = state.unlockedAchievements.length;
-  return `
-    <div class="achievements-header">
-      <div style="font-size:24px;font-weight:800">🏆 Conquistas</div>
-    </div>
-    <div class="ach-grid">
-      ${ACHIEVEMENTS.map(a => {
-        const isUnlocked = state.unlockedAchievements.includes(a.id);
-        return `<div class="ach-card">${a.title}</div>`;
-      }).join('')}
-    </div>
-  `;
-}
-
-function renderRanking() {
-  return `<div class="ranking-header">📊 Ranking em Tempo Real</div>`;
-}
-
-function renderProfile() {
-  const xpNeeded = xpForLevel(state.level);
-  return `
-    <div class="profile-header">
-      <div class="profile-name">Guerreiro</div>
-      <button class="btn-secondary" style="width:100%;margin-top:8px" onclick="resetGame()">🔄 Resetar Progresso</button>
-    </div>
-  `;
-}
-
-function resetGame() {
-  if (confirm('Resetar todo o progresso? Esta ação não pode ser desfeita.')) {
-    localStorage.removeItem('fitnessRPG_state');
-    state = { ...DEFAULT_STATE };
-    saveState(); 
-    window.location.reload();
-  }
-}
-
-// ==========================================
-// INITIALIZATION AND NETWORK CONTROL
-// ==========================================
-let splash;
-let app;
-
-function updateOnline() {
-    const bar = document.getElementById('offline-bar');
-    if (bar) {
-        if (!navigator.onLine) bar.classList.add('show');
-        else bar.classList.remove('show');
-    }
-}
-
-function init() {
-    const salvo = localStorage.getItem('fitnessRPG_state');
-    if (salvo) {
-        try { state = JSON.parse(salvo); } catch (e) { state = { ...DEFAULT_STATE }; }
-    } else {
-        state = { ...DEFAULT_STATE };
-    }
-
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./sw.js').catch(() => {});
-    }
-
-    splash = document.getElementById('splash');
-    app = document.getElementById('app');
-
-    window.addEventListener('online', updateOnline);
-    window.addEventListener('offline', updateOnline);
-    updateOnline();
-
-    // Controle do Splash Screen
-    setTimeout(() => {
-        if (splash) splash.classList.add('hidden');
-        if (app) app.style.display = 'flex';
-        
-        renderTab('home');
-
-        setTimeout(() => {
-            if (splash) splash.style.display = 'none';
-        }, 600);
-    }, 1800);
-}
-
-document.addEventListener('DOMContentLoaded', init);
+    const { error } = await supabase.auth.signUp({ email, password });
+    if (error) alert('Erro: ' + error.message);
+    else alert('Cadastro realizado! Verifique seu e-mail.');
