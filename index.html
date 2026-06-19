@@ -4,90 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Quest Stuff - Fitness RPG</title>
-    <style>
-        /* Estilos básicos para garantir o funcionamento visual correto */
-        :root {
-            --bg-dark: #0d0e15;
-            --card-bg: #151724;
-            --muted: #8b8eaf;
-        }
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: var(--bg-dark);
-            color: #fff;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        }
-        #app {
-            display: none; /* O JS muda para 'flex' após o Splash Screen */
-            flex-direction: column;
-            min-height: 100vh;
-        }
-        #splash {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--bg-dark);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            transition: opacity 0.6s ease;
-        }
-        #splash.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
-        #user-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 20px;
-            background: var(--card-bg);
-            font-size: 14px;
-        }
-        #offline-bar {
-            background: #f44336;
-            color: white;
-            text-align: center;
-            padding: 4px;
-            font-size: 12px;
-            display: none;
-        }
-        #offline-bar.show {
-            display: block;
-        }
-        .nav-bar {
-            display: flex;
-            justify-content: space-around;
-            background: var(--card-bg);
-            padding: 12px 0;
-            position: fixed;
-            bottom: 0; width: 100%;
-        }
-        .nav-btn {
-            background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px;
-        }
-        .nav-btn.active {
-            color: #4CAF50;
-            font-weight: bold;
-        }
-        #content {
-            padding: 20px 20px 80px;
-            flex: 1;
-        }
-        /* Telas sobrepostas (Overlay) */
-        .overlay-screen {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--bg-dark);
-            z-index: 1000;
-            display: none;
-            overflow-y: auto;
-        }
-        .overlay-screen.open, .overlay-screen.show {
-            display: block;
-        }
-    </style>
+    
+    <link rel="stylesheet" href="./style.css">
 </head>
 <body>
 
@@ -96,18 +14,18 @@
     <div id="splash">
         <div style="text-align: center;">
             <h1 style="font-size: 32px; margin-bottom: 10px;">⚔️ Quest Stuff</h1>
-            <p style="color: var(--muted); font-size: 16px;">Carregando o seu RPG de Fitness...</p>
+            <p style="color: #8b8eaf; font-size: 16px;">Carregando o seu RPG de Fitness...</p>
         </div>
     </div>
 
-    <div id="app">
+    <div id="app" style="display: none;">
         
         <div id="user-bar" style="display: none;">
-            <span>Logado como: <strong id="user-display-name">...</strong></span>
+            <span>Conectado como: <strong id="user-display-name">...</strong></span>
         </div>
 
         <div id="auth-container" style="max-width: 320px; margin: 40px auto 20px; display: flex; flex-direction: column; gap: 12px; padding: 0 20px;">
-            <h2 style="text-align: center; margin-bottom: 10px;">Entrar no Jogo</h2>
+            <h2 style="text-align: center; margin-bottom: 10px;">Faça Login para Jogar</h2>
             <input type="email" id="auth-email" placeholder="Seu e-mail" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #1E2040; background: #1E2040; color: #fff; font-size: 15px; box-sizing: border-box;">
             <input type="password" id="auth-password" placeholder="Sua senha" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #1E2040; background: #1E2040; color: #fff; font-size: 15px; box-sizing: border-box;">
             
@@ -131,7 +49,7 @@
 
     <div id="mission-screen" class="overlay-screen"></div>
 
-    <div id="rest-screen" class="overlay-screen" style="display:none; align-items:center; justify-content:center; flex-direction:column; background:rgba(13,14,21,0.95);">
+    <div id="rest-screen" class="overlay-screen" style="display:none; align-items:center; justify-content:center; flex-direction:column; background:rgba(13,14,21,0.95); z-index: 1001;">
         <div style="text-align:center; padding:20px;">
             <h2>Tempo de Descanso</h2>
             <svg viewBox="0 0 120 120" width="120" height="120" style="margin:20px auto;">
@@ -153,10 +71,9 @@
     </div>
 
     <div id="toast" style="position: fixed; bottom: 85px; left: 50%; transform: translateX(-50%); z-index: 10000; width: calc(100% - 40px); max-width: 340px;"></div>
-
     <div id="particles" style="position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:9998; overflow:hidden;"></div>
 
-    <div id="ach-flash" class="overlay-screen" style="display:none; height:auto; bottom:90px; top:auto; left:20px; width:calc(100% - 40px); max-width:340px; background:#FFD700; color:#000; padding:12px; border-radius:8px; box-shadow:0 4px 15px rgba(0,0,0,0.3);">
+    <div id="ach-flash" class="overlay-screen" style="display:none; height:auto; bottom:90px; top:auto; left:20px; width:calc(100% - 40px); max-width:340px; background:#FFD700; color:#000; padding:12px; border-radius:8px; box-shadow:0 4px 15px rgba(0,0,0,0.3); z-index: 10002;">
         <div style="display:flex; align-items:center; gap:12px;">
             <span id="ach-flash-icon" style="font-size:24px;">🏆</span>
             <div>
