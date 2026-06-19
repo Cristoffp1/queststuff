@@ -991,32 +991,62 @@ function resetGame() {
   }
 }
 
-// ===== INIT CORRIGIDO =====
-function init() {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
-  }
+// ==========================================
+// 1. DECLARAÇÃO DE VARIÁVEIS GLOBAIS DO DOM
+// (Coloque isso logo acima da função init se elas já não existirem globalmente)
+// ==========================================
+let splash;
+let app;
 
-  function updateOnline() {
+// ===== INIT CORRIGIDO =====
+function updateOnline() {
     const bar = document.getElementById('offline-bar');
     if (bar) {
-      if (!navigator.onLine) bar.classList.add('show');
-      else bar.classList.remove('show');
+        if (!navigator.onLine) bar.classList.add('show');
+        else bar.classList.remove('show');
     }
-  }
-  window.addEventListener('online', updateOnline);
-  window.addEventListener('offline', updateOnline);
-  updateOnline();
+}
 
-  const splash = document.getElementById('splash');
-  const app = document.getElementById('app');
+function init() {
+    // 2. RECUPERA O PROGRESSO SALVO ASSIM QUE O SITE ABRE
+    const salvo = localStorage.getItem('fitnessRPG_state');
+    if (salvo) {
+        try {
+            state = JSON.parse(salvo); 
+        } catch (e) {
+            console.error("Erro ao ler estado salvo, usando padrão:", e);
+            state = { ...DEFAULT_STATE };
+        }
+    } else {
+        state = { ...DEFAULT_STATE };
+    }
 
-  setTimeout(() => {
-    if (splash) splash.classList.add('hidden');
-    if (app) app.style.display = 'flex';
-    renderTab('home');
-    setTimeout(() => { if (splash) splash.style.display = 'none'; }, 600);
-  }, 1800);
+    // 3. REGISTRO DO SERVICE WORKER
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+    }
+
+    // 4. MAPEAMENTO DOS ELEMENTOS DO DOM (RESOLVE O PROBLEMA DE ESCOPO)
+    splash = document.getElementById('splash');
+    app = document.getElementById('app');
+
+    // 5. CONFIGURAÇÃO DOS OUVINTES DE REDE
+    window.addEventListener('online', updateOnline);
+    window.addEventListener('offline', updateOnline);
+    updateOnline();
+
+    // 6. EXIBIÇÃO DA TELA E RENDERIZAÇÃO INICIAL
+    setTimeout(() => {
+        if (splash) splash.classList.add('hidden');
+        if (app) app.style.display = 'flex';
+        
+        // Renderiza a Home já preenchida com o progresso que foi carregado no passo 2
+        renderTab('home');
+
+        setTimeout(() => {
+            if (splash) splash.style.display = 'none';
+        }, 600);
+    }, 1800);
 }
 
 document.addEventListener('DOMContentLoaded', init);
