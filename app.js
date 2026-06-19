@@ -641,15 +641,19 @@ async function handleSignIn() {
   }
 }
 
-async function handleSignOut() {
-  const { error } = await supabase.auth.signOut();
-  if (error) {
-    alert('Erro ao sair: ' + error.message);
-  } else {
-    localStorage.removeItem('fitnessRPG_state'); 
-    alert('Você saiu da conta!');
-    window.location.reload(); // Atualiza a tela limpando tudo visualmente
-  }
+// Altere o início da sua função para que ela seja exportada para a janela (window)
+window.handleSignOut = async function() {
+    try {
+        const { error } = await supabase.auth.signOut();
+        if (error) throw error;
+        
+        // Limpa o estado local se necessário
+        localStorage.removeItem('fitnessRPG_state'); 
+        alert("Deslogado com sucesso!");
+        window.location.reload(); // Força o recarregamento para limpar a tela
+    } catch (error) {
+        console.error('Erro ao sair:', error.message);
+    }
 }
 
 function closeLevelUp() {
