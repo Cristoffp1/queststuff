@@ -30,15 +30,16 @@
   <div style="max-width: 320px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px;">
     <input type="email" id="auth-email" placeholder="Seu e-mail" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #1E2040; background: #1E2040; color: #fff; font-size: 15px;">
     <input type="password" id="auth-password" placeholder="Sua senha" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #1E2040; background: #1E2040; color: #fff; font-size: 15px;">
-    <button id="btn-login" style="width: 100%; padding: 14px; border-radius: 8px; border: none; background: #7C3AED; color: #fff; font-weight: 700; font-size: 15px; cursor: pointer; margin-top: 10px;">Entrar</button>
-    <button id="btn-register" style="width: 100%; padding: 14px; border-radius: 8px; border: 1px solid #7C3AED; background: transparent; color: #7C3AED; font-weight: 700; font-size: 15px; cursor: pointer;">Criar Nova Conta</button>
-  </div>
-</div>
+    <!-- Linha 33: Botão de Login -->
+<button id="btn-login" style="width: 100%; padding: 14px; border-radius: 8px;" onclick="handleLoginClick()">Entrar</button>
 
-<div id="user-bar" style="display: none; justify-content: space-between; align-items: center; padding: 10px 20px; background: #1E2040; color: #E2E8F0; font-size: 12px; border-bottom: 1px solid #2D3164;">
-  <div>Conectado como: <span id="user-display-name" style="font-weight: bold; color: #00aaff;"></span></div>
-<!-- No seu HTML, altere o botão para ficar assim: -->
-<button type="button" id="btn-logout" onclick="handleSignOut()">Sair</button>
+<!-- Linha 34: Botão de Registrar -->
+<button id="btn-register" style="width: 100%; padding: 14px; border-radius: 8px;" onclick="handleRegisterClick()">Registrar</button>
+
+...
+
+<!-- Linha 41: Botão de Sair -->
+<button id="btn-logout" onclick="handleSignOut()">Sair</button>
 
 </div>
 
