@@ -218,27 +218,34 @@ async function loadState(user) {
 }
 
 async function saveState() {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    localStorage.setItem('fitnessRPG_state', JSON.stringify(state));
-
-    if (user) {
-      await supabase
-        .from('profiles')
-        .upsert({
-          id: user.id,
-          xp: state.xp,
-          nivel: state.level,
-          moedas: state.moedas || 0,
-          streak: state.streak || 0,
-          total_missions: state.totalMissions || 0,
-          max_day_missions: state.maxDayMissions || 0,
-          last_training_date: state.lastTrainingDate
-        });
+    // 1. SALVA NO LOCALSTORAGE IMEDIATAMENTE (Garante o progresso no celular mesmo se fechar rápido)
+    try {
+        localStorage.setItem('fitnessRPG_state', JSON.stringify(state));
+    } catch (err) {
+        console.error("Erro ao salvar no localStorage:", err);
     }
-  } catch (e) {
-    console.error("Erro ao salvar dados online:", e);
-  }
+
+    // 2. SALVA NO SUPABASE EM SEGUNDO PLANO (Se houver usuário logado)
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user) {
+            await supabase
+                .from('profiles')
+                .upsert({
+                    id: user.id,
+                    xp: state.xp,
+                    nivel: state.level,
+                    moedas: state.moedas || 0,
+                    streak: state.streak || 0,
+                    total_missions: state.totalMissions || 0,
+                    max_day_missions: state.maxDayMissions || 0,
+                    last_training_date: state.lastTrainingDate
+                });
+        }
+    } catch (e) {
+        console.error("Erro ao salvar dados online:", e);
+    }
 }
 
 async function registrarConquistaOnline(nomeConquista) {
