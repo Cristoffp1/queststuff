@@ -1,11 +1,11 @@
 'use strict';
 
 // ===== SUPABASE CONFIG =====
-const SUPABASE_URL = 'https://flnzycipcdqtwcyujzqe.supabase.co';
+const SUPABASE_URL = 'https://flnzycipcdqtwcyujzqe.supabase.com';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZsbnp5Y2lwY2RxdHdjeXVqenFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MjA5MzcsImV4cCI6MjA5NzE5NjkzN30.plqw_CtlaJmChDlnkTfHN9MUPVn0IK7Ty_WfujM3ICo'; 
 
-// Inicializa o cliente do Supabase diretamente no objeto window
-const supabaseClient = window.supabase.createClient(
+// Variável ÚNICA utilizada em todo o escopo do projeto
+const supabase = window.supabase.createClient(
   SUPABASE_URL,
   SUPABASE_KEY
 );
@@ -122,11 +122,24 @@ const DEFAULT_STATE = {
 let state = { ...DEFAULT_STATE };
 let currentUser = null; 
 
+// Variáveis globais para os seletores de navegação de abas
+let currentTab = 'home';
+let missionSubTab = 'daily';
+let rankingSubTab = 'regional';
+
+// Variáveis globais de controle da execução de missões
+let activeMission = null;
+let currentSet = 1;
+let currentReps = 0;
+let timerInterval = null;
+let restInterval = null;
+let restRemaining = 30;
+
 // ========================================================
 // CONTROLE DE SESSÃO E AUTENTICAÇÃO
 // ========================================================
 
-supabaseClient.auth.onAuthStateChange(async (event, session) => {
+supabase.auth.onAuthStateChange(async (event, session) => {
   const authContainer = document.getElementById('auth-container');
   const userBar = document.getElementById('user-bar');
   const userDisplayName = document.getElementById('user-display-name');
@@ -148,15 +161,6 @@ supabaseClient.auth.onAuthStateChange(async (event, session) => {
   }
 });
 
-// Escutadores dos botões da tela de login
-document.getElementById('btn-login')?.addEventListener('click', handleLogin);
-document.getElementById('btn-register')?.addEventListener('click', handleSignUp);
-
-document.getElementById('btn-logout')?.addEventListener('click', async () => {
-  const { error } = await supabase.auth.signOut();
-  if (error) alert("Erro ao sair: " + error.message);
-});
-
 // ========================================================
 // SINCRONIZAÇÃO ONLINE (PROFILES & PROGRESS)
 // ========================================================
@@ -169,9 +173,9 @@ async function loadState(user) {
       .from('profiles')
       .select('*')
       .eq('id', user.id)
-      .single();
+      .maybeSingle(); // Modificado para evitar erros PGRST116 redundantes na v2
 
-    if (error && error.code === 'PGRST116') {
+    if (!profile) {
       const novoPerfil = {
         id: user.id,
         nome: user.email.split('@')[0],
@@ -289,6 +293,7 @@ function checkDayReset() {
 function xpForLevel(lv) {
   return Math.floor(100 * Math.pow(lv, 1.5));
 }
+
 function addXP(amount) {
   state.xp += amount;
   state.totalXP += amount;
@@ -309,13 +314,6 @@ function scaledTarget(ex) {
 }
 
 // ===== MISSION LOGIC =====
-let activeMission = null;
-let currentSet = 1;
-let currentReps = 0;
-let timerInterval = null;
-let restInterval = null;
-let restRemaining = 30;
-
 function startMission(id) {
   const ex = EXERCISES.find(e => e.id === id);
   if (!ex) return;
@@ -379,33 +377,19 @@ function openMissionScreen() {
   if (ex.type === 'timer') updateRing(0, target);
 }
 
-function closeMissionScreen() {
+// Expondo funções globais usadas no onclick inline do HTML gerado dinamicamente
+window.closeMissionScreen = function() {
   clearInterval(timerInterval);
   document.getElementById('mission-screen')?.classList.remove('open');
-}
+};
 
-// O resto das funções do jogo (updateRing, addRep, startTimer, completeMission, etc...) permanecem aqui inalteradas.
-function updateRing(current, total) {
-  const ring = document.getElementById('prog-ring');
-  const label = document.getElementById('prog-label');
-  if (!ring || !label) return;
-  const circumference = 314.16;
-  const pct = Math.min(current / total, 1);
-  ring.style.strokeDashoffset = circumference * (1 - pct);
-  if (activeMission.type === 'timer') {
-    label.textContent = total - current;
-  } else {
-    label.textContent = current;
-  }
-}
-
-function addRep() {
+window.addRep = function() {
   currentReps++;
   updateRing(currentReps, activeMission.target);
   if (currentReps >= activeMission.target) finishSet();
-}
+};
 
-function startTimer() {
+window.startTimer = function() {
   const btn = document.getElementById('timer-start-btn');
   if (btn) btn.style.display = 'none';
   let elapsed = 0;
@@ -418,6 +402,25 @@ function startTimer() {
       finishSet();
     }
   }, 1000);
+};
+
+window.skipRest = function() {
+  clearInterval(restInterval);
+  nextSet();
+};
+
+function updateRing(current, total) {
+  const ring = document.getElementById('prog-ring');
+  const label = document.getElementById('prog-label');
+  if (!ring || !label) return;
+  const circumference = 314.16;
+  const pct = Math.min(current / total, 1);
+  ring.style.strokeDashoffset = circumference * (1 - pct);
+  if (activeMission.type === 'timer') {
+    label.textContent = total - current;
+  } else {
+    label.textContent = current;
+  }
 }
 
 function finishSet() {
@@ -455,11 +458,6 @@ function updateRestRing(remaining) {
   count.textContent = remaining;
 }
 
-function skipRest() {
-  clearInterval(restInterval);
-  nextSet();
-}
-
 function nextSet() {
   document.getElementById('rest-screen')?.classList.remove('show');
   currentReps = 0;
@@ -468,7 +466,7 @@ function nextSet() {
 
 function completeMission() {
   const ex = activeMission;
-  closeMissionScreen();
+  window.closeMissionScreen();
 
   const today = new Date().toDateString();
   const hour = new Date().getHours();
@@ -597,9 +595,9 @@ function showLevelUp(level) {
   spawnParticles();
 }
 
-function closeLevelUp() {
+window.closeLevelUp = function() {
   document.getElementById('levelup-overlay')?.classList.remove('show');
-}
+};
 
 function showAchievementFlash(ach) {
   const el = document.getElementById('ach-flash');
@@ -653,15 +651,11 @@ function getRankingPlayers(scope) {
 }
 
 // ===== RENDERING =====
-let currentTab = 'home';
-let missionSubTab = 'daily';
-let rankingSubTab = 'regional';
-
-function switchTab(tab) {
+window.switchTab = function(tab) {
   currentTab = tab;
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   renderTab(tab);
-}
+};
 
 function renderTab(tab) {
   const content = document.getElementById('content');
@@ -824,15 +818,15 @@ function renderSpecialMissions() {
   }).join('');
 }
 
-function toggleMissionCard(id) {
+window.toggleMissionCard = function(id) {
   const el = document.getElementById(id);
   if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
-}
+};
 
-function switchMissionTab(tab) {
+window.switchMissionTab = function(tab) {
   missionSubTab = tab;
   renderTab('missions');
-}
+};
 
 function renderAchievements() {
   const unlocked = state.unlockedAchievements.length;
@@ -902,10 +896,10 @@ function renderRanking() {
   `;
 }
 
-function switchRankingTab(tab) {
+window.switchRankingTab = function(tab) {
   rankingSubTab = tab;
   renderTab('ranking');
-}
+};
 
 function renderProfile() {
   const xpNeeded = xpForLevel(state.level);
@@ -952,7 +946,7 @@ function renderProfile() {
   `;
 }
 
-function resetGame() {
+window.resetGame = function() {
   if (confirm('Resetar todo o progresso? Esta ação não pode ser desfeita.')) {
     localStorage.removeItem('fitnessRPG_state');
     state = { ...DEFAULT_STATE };
@@ -960,10 +954,80 @@ function resetGame() {
     renderTab(currentTab);
     showToast('🔄 Progresso resetado!');
   }
+};
+
+// ========================================================
+// FUNÇÕES DE AUTENTICAÇÃO E MODAL
+// ========================================================
+
+async function handleLogin() {
+  const email = document.getElementById('auth-email')?.value;
+  const password = document.getElementById('auth-password')?.value;
+  if(!email || !password) return alert("Preencha todos os campos!");
+
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  
+  if (error) {
+    mostrarModalQuestStuff('Erro ao entrar: ' + error.message);
+  } else if (data?.user) {
+    await loadState(data.user);
+    renderTab('home');
+  }
 }
+
+async function handleSignUp() {
+  try {
+    const email = document.getElementById('auth-email')?.value;
+    const password = document.getElementById('auth-password')?.value;
+    if(!email || !password) return alert("Preencha todos os campos!");
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password
+    });
+
+    if (error) {
+      mostrarModalQuestStuff("Erro no cadastro: " + error.message);
+    } else if (data?.user) {
+      mostrarModalQuestStuff("Cadastro realizado! Caso a confirmação de e-mail esteja ativa, verifique sua caixa de entrada.");
+    }
+  } catch (erro) {
+    mostrarModalQuestStuff("ERRO: " + erro.message);
+  }
+}
+
+async function handleLogout() {
+  const { error } = await supabase.auth.signOut();
+  if (error) alert("Erro ao sair: " + error.message);
+}
+
+function mostrarModalQuestStuff(mensagem) {
+  const modal = document.getElementById('custom-modal');
+  const modalMessage = document.getElementById('modal-message');
+  const modalCloseBtn = document.getElementById('modal-close-btn');
+
+  if (modal && modalMessage) {
+    modalMessage.innerText = mensaje;
+    modal.style.display = 'flex'; 
+
+    if(modalCloseBtn) {
+      modalCloseBtn.onclick = function() {
+        modal.style.display = 'none';
+      };
+    }
+  }
+}
+
+// Expondo de forma explícita para os handlers do HTML
+window.startMission = startMission;
 
 // ===== INIT =====
 function init() {
+  // Conectar escutadores de autenticação de forma segura após o DOM carregar
+  document.getElementById('btn-login')?.addEventListener('click', handleLogin);
+  document.getElementById('btn-register')?.addEventListener('click', handleSignUp);
+  document.getElementById('btn-logout')?.addEventListener('click', handleLogout);
+
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
   }
@@ -990,58 +1054,3 @@ function init() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
-
-// ===== FUNÇÕES DE AUTENTICAÇÃO CORRIGIDAS =====
-async function handleLogin() {
-  const email = document.getElementById('auth-email').value;
-  const password = document.getElementById('auth-password').value;
-  if(!email || !password) return alert("Preencha todos os campos!");
-
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  
-  if (error) {
-    mostrarModalQuestStuff('Erro ao entrar: ' + error.message);
-  } else if (data?.user) {
-    await loadState(data.user);
-    renderTab('home');
-  }
-}
-
-async function handleSignUp() {
-  try {
-    const email = document.getElementById('auth-email').value;
-    const password = document.getElementById('auth-password').value;
-
-    console.log("Tentando criar:", email);
-
-    const resultado = await supabase.auth.signUp({
-      email,
-      password
-    });
-
-    console.log(resultado);
-
-    alert(JSON.stringify(resultado));
-
-  } catch (erro) {
-    console.log(erro);
-    alert("ERRO: " + erro.message);
-  }
-}
-
-function mostrarModalQuestStuff(mensagem) {
-  const modal = document.getElementById('custom-modal');
-  const modalMessage = document.getElementById('modal-message');
-  const modalCloseBtn = document.getElementById('modal-close-btn');
-
-  if (modal && modalMessage) {
-    modalMessage.innerText = mensagem;
-    modal.style.display = 'flex'; 
-
-    if(modalCloseBtn) {
-      modalCloseBtn.onclick = function() {
-        modal.style.display = 'none';
-      };
-    }
-  }
-}
