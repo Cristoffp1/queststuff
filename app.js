@@ -1170,7 +1170,7 @@ function mostrarModalQuestStuff(mensagem) {
   const modalCloseBtn = document.getElementById('modal-close-btn');
 
   if (modal && modalMessage) {
-    modalMessage.innerText = mensaje;
+    modalMessage.innerText = mensagem;
     modal.style.display = 'flex'; // Abre o modal centralizado
 
     // Configura o botão para fechar quando for clicado
