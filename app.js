@@ -147,25 +147,44 @@ supabase.auth.onAuthStateChange(async (event, session) => {
   }
 });
 
-// Escutadores dos botões da tela de login
-document.getElementById('btn-login')?.addEventListener('click', async () => {
-  console.log("Botão cadastrar clicado");
+// ========================================================
+// ESCUTADORES DOS BOTÕES DA TELA DE LOGIN (CORRIGIDO)
+// ========================================================
+document.getElementById('btn-login')?.addEventListener('click', async (e) => {
+  e.preventDefault(); // Evita que a página recarregue caso esteja dentro de um form
   const email = document.getElementById('auth-email').value;
   const password = document.getElementById('auth-password').value;
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) alert("Erro ao entrar: " + error.message);
+  
+  if (!email || !password) {
+    alert("Por favor, preencha todos os campos.");
+    return;
+  }
+
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) {
+    alert("Erro ao entrar: " + error.message);
+  } else if (data?.user) {
+    await loadState(data.user);
+    renderTab('home');
+  }
 });
 
-document.getElementById('btn-register')?.addEventListener('click', async () => {
+document.getElementById('btn-register')?.addEventListener('click', async (e) => {
+  e.preventDefault(); // Evita comportamentos fantasmas do formulário
   const email = document.getElementById('auth-email').value;
   const password = document.getElementById('auth-password').value;
-  const { error } = await supabase.auth.signUp({ email, password });
+
+  if (!email || !password) {
+    mostrarModalQuestStuff("Por favor, preencha todos os campos.");
+    return;
+  }
+
+  const { data, error } = await supabase.auth.signUp({ email, password });
   
   if (error) {
     mostrarModalQuestStuff("Erro ao cadastrar: " + error.message);
-  } else {
-    // Chama o seu novo modal idêntico ao da foto!
-    mostrarModalQuestStuff("Cadastro realizado com sucesso! Divirta-se no Quest Stuff.");
+  } else if (data?.user) {
+    mostrarModalQuestStuff("Cadastro realizado com sucesso! Verifique seu e-mail ou faça login no Quest Stuff.");
   }
 });
 
@@ -173,6 +192,7 @@ document.getElementById('btn-logout')?.addEventListener('click', async () => {
   const { error } = await supabase.auth.signOut();
   if (error) alert("Erro ao sair: " + error.message);
 });
+
 // ========================================================
 // SINCRONIZAÇÃO ONLINE CORRIGIDA (PROFILES & PROGRESS)
 // ========================================================
