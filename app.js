@@ -126,7 +126,7 @@ let currentUser = null;
 // CONTROLE DE SESSÃO E AUTENTICAÇÃO
 // ========================================================
 
-supabase.auth.onAuthStateChange(async (event, session) => {
+supabaseClient.auth.onAuthStateChange(async (event, session) => {
   const authContainer = document.getElementById('auth-container');
   const userBar = document.getElementById('user-bar');
   const userDisplayName = document.getElementById('user-display-name');
