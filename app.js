@@ -102,7 +102,6 @@ const ACHIEVEMENTS = [
   { id: 'a17', icon: '📈', title: 'Progressão Real', desc: '10 missões seguidas concluídas', check: s => s.maxConsecutive >= 10 },
   { id: 'a18', icon: '🌈', title: 'Lendário', desc: 'Nível 50 e 200 missões', check: s => s.level >= 50 && s.totalMissions >= 200 }
 ];
-
 // ===== STATE =====
 const DEFAULT_STATE = {
   level: 1, xp: 0, totalXP: 0,
@@ -113,78 +112,58 @@ const DEFAULT_STATE = {
   maxDayMissions: 0, maxConsecutive: 0, consecutiveRun: 0,
   completedWeekly: [], completedSpecial: [], unlockedAchievements: [],
   earlyBird: false, trioPerfect: false,
-  todayCategories: []
+  todayCategories: [], moedas: 0
 };
 
 let state = { ...DEFAULT_STATE };
+let currentUser = null; // Guarda o usuário atual para evitar chamadas excessivas à API
 
 // ========================================================
-// CONTROLE DE SESSÃO E AUTENTICAÇÃO (NOVO)
+// CONTROLE DE SESSÃO E AUTENTICAÇÃO
 // ========================================================
 
-// Monitora se o usuário está logado ou deslogado automaticamente
 supabase.auth.onAuthStateChange(async (event, session) => {
   const authContainer = document.getElementById('auth-container');
   const userBar = document.getElementById('user-bar');
   const userDisplayName = document.getElementById('user-display-name');
 
   if (session) {
-    // Se o usuário está logado, esconde a tela de login e mostra a barra do usuário
+    currentUser = session.user;
     if (authContainer) authContainer.style.display = 'none';
     if (userBar) userBar.style.display = 'flex';
     if (userDisplayName) userDisplayName.textContent = session.user.email;
     
-    // Carrega o progresso direto do banco de dados (tabela profiles)
     await loadState(session.user);
   } else {
-    // Se deslogou, mostra a tela de login e esconde a barra
+    currentUser = null;
     if (authContainer) authContainer.style.display = 'block';
     if (userBar) userBar.style.display = 'none';
     
-    // Reseta o jogo para o estado inicial padrão
     state = { ...DEFAULT_STATE };
-    if (typeof render === 'function') render();
+    switchTab('home'); // Garante que volta para a aba inicial limpa
   }
 });
 
-// ========================================================
-// ESCUTADORES DOS BOTÕES DA TELA DE LOGIN (CORRIGIDO)
-// ========================================================
-document.getElementById('btn-login')?.addEventListener('click', async (e) => {
-  e.preventDefault(); // Evita que a página recarregue caso esteja dentro de um form
+// Escutadores dos botões da tela de login (Unificados)
+document.getElementById('btn-login')?.addEventListener('click', async () => {
   const email = document.getElementById('auth-email').value;
   const password = document.getElementById('auth-password').value;
-  
-  if (!email || !password) {
-    alert("Por favor, preencha todos os campos.");
-    return;
-  }
+  if(!email || !password) return alert("Preencha todos os campos!");
 
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) {
-    alert("Erro ao entrar: " + error.message);
-  } else if (data?.user) {
-    await loadState(data.user);
-    renderTab('home');
-  }
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) mostrarModalQuestStuff("Erro ao entrar: " + error.message);
 });
 
-document.getElementById('btn-register')?.addEventListener('click', async (e) => {
-  e.preventDefault(); // Evita comportamentos fantasmas do formulário
+document.getElementById('btn-register')?.addEventListener('click', async () => {
   const email = document.getElementById('auth-email').value;
   const password = document.getElementById('auth-password').value;
+  if(!email || !password) return alert("Preencha todos os campos!");
 
-  if (!email || !password) {
-    mostrarModalQuestStuff("Por favor, preencha todos os campos.");
-    return;
-  }
-
-  const { data, error } = await supabase.auth.signUp({ email, password });
-  
+  const { error } = await supabase.auth.signUp({ email, password });
   if (error) {
     mostrarModalQuestStuff("Erro ao cadastrar: " + error.message);
-  } else if (data?.user) {
-    mostrarModalQuestStuff("Cadastro realizado com sucesso! Verifique seu e-mail ou faça login no Quest Stuff.");
+  } else {
+    mostrarModalQuestStuff("Cadastro realizado com sucesso! Faça login para se divertir no Quest Stuff.");
   }
 });
 
@@ -194,7 +173,7 @@ document.getElementById('btn-logout')?.addEventListener('click', async () => {
 });
 
 // ========================================================
-// SINCRONIZAÇÃO ONLINE CORRIGIDA (PROFILES & PROGRESS)
+// SINCRONIZAÇÃO ONLINE (PROFILES & PROGRESS)
 // ========================================================
 
 async function loadState(user) {
@@ -208,6 +187,7 @@ async function loadState(user) {
       .single();
 
     if (error && error.code === 'PGRST116') {
+      // Perfil não existe, cria um novo com a estrutura completa
       const novoPerfil = {
         id: user.id,
         nome: user.email.split('@')[0],
@@ -217,7 +197,11 @@ async function loadState(user) {
         streak: 0,
         total_missions: 0,
         max_day_missions: 0,
-        last_training_date: null
+        last_training_date: null,
+        total_flexoes: 0,
+        total_agacham: 0,
+        total_prancha: 0,
+        unlocked_achievements: []
       };
 
       const { error: insertError } = await supabase
@@ -230,7 +214,7 @@ async function loadState(user) {
       throw error;
     }
 
-    // CARREGANDO TODOS OS DADOS CORRETAMENTE DO SUPABASE
+    // Mapeia os dados da nuvem de volta para o estado local da aplicação
     state.xp = profile.xp || 0;
     state.level = profile.nivel || 1;
     state.moedas = profile.moedas || 0;
@@ -238,6 +222,54 @@ async function loadState(user) {
     state.totalMissions = profile.total_missions || 0;
     state.maxDayMissions = profile.max_day_missions || 0;
     state.lastTrainingDate = profile.last_training_date || null;
+    
+    // Dados extras que adicionamos para persistência real:
+    state.totalFlexoes = profile.total_flexoes || 0;
+    state.totalAgacham = profile.total_agacham || 0;
+    state.totalPrancha = profile.total_prancha || 0;
+    state.unlockedAchievements = profile.unlocked_achievements || [];
+
+    checkDayReset();
+    renderTab(currentTab);
+
+  } catch (e) {
+    console.error("Erro ao carregar dados do Supabase, usando local:", e);
+    const saved = localStorage.getItem('fitnessRPG_state');
+    if (saved) state = { ...DEFAULT_STATE, ...JSON.parse(saved) };
+    renderTab(currentTab);
+  }
+}
+
+async function saveState() {
+  try {
+    // Salva localmente primeiro (Fallback rápido)
+    localStorage.setItem('fitnessRPG_state', JSON.stringify(state));
+
+    // Se houver um usuário autenticado na sessão global, salva na nuvem de forma assíncrona
+    if (currentUser) {
+      await supabase
+        .from('profiles')
+        .upsert({
+          id: currentUser.id,
+          xp: state.xp,
+          nivel: state.level,
+          moedas: state.moedas || 0,
+          streak: state.streak || 0,
+          total_missions: state.totalMissions || 0,
+          max_day_missions: state.maxDayMissions || 0,
+          last_training_date: state.lastTrainingDate,
+          total_flexoes: state.totalFlexoes,
+          total_agacham: state.totalAgacham,
+          total_prancha: state.totalPrancha,
+          unlocked_achievements: state.unlockedAchievements
+        });
+    }
+  } catch (e) {
+    console.error("Erro ao salvar dados online:", e);
+  }
+}
+
+// Restante das suas funções (checkDayReset, addXP, etc.) continuam abaixo sem alterações...
 
     checkDayReset();
     if (typeof render === 'function') render();
