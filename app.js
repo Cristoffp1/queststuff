@@ -149,6 +149,7 @@ supabase.auth.onAuthStateChange(async (event, session) => {
 
 // Escutadores dos botões da tela de login
 document.getElementById('btn-login')?.addEventListener('click', async () => {
+  console.log("Botão cadastrar clicado");
   const email = document.getElementById('auth-email').value;
   const password = document.getElementById('auth-password').value;
   const { error } = await supabase.auth.signInWithPassword({ email, password });
