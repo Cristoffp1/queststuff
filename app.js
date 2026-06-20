@@ -1008,16 +1008,24 @@ async function handleLogin() {
 }
 
 async function handleSignUp() {
-  const email = document.getElementById('auth-email').value;
-  const password = document.getElementById('auth-password').value;
-  if(!email || !password) return alert("Preencha todos os campos!");
+  try {
+    const email = document.getElementById('auth-email').value;
+    const password = document.getElementById('auth-password').value;
 
-  const { error } = await supabase.auth.signUp({ email, password });
-  
-  if (error) {
-    mostrarModalQuestStuff('Erro ao cadastrar: ' + error.message);
-  } else {
-    mostrarModalQuestStuff('Conta criada com sucesso! Faça login para começar a jogar.');
+    console.log("Tentando criar:", email);
+
+    const resultado = await supabase.auth.signUp({
+      email,
+      password
+    });
+
+    console.log(resultado);
+
+    alert(JSON.stringify(resultado));
+
+  } catch (erro) {
+    console.log(erro);
+    alert("ERRO: " + erro.message);
   }
 }
 
