@@ -4,11 +4,8 @@
 const SUPABASE_URL = 'https://flnzycipcdqtwcyujzqe.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZsbnp5Y2lwY2RxdHdjeXVqenFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MjA5MzcsImV4cCI6MjA5NzE5NjkzN30.plqw_CtlaJmChDlnkTfHN9MUPVn0IK7Ty_WfujM3ICo'; 
 
-// Variável ÚNICA utilizada em todo o escopo do projeto
-const supabase = window.supabase.createClient(
-  SUPABASE_URL,
-  SUPABASE_KEY
-);
+// Inicializa o cliente do Supabase diretamente no objeto window
+window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ===== EXERCISES DATA =====
 const EXERCISES = [
@@ -116,53 +113,67 @@ const DEFAULT_STATE = {
   maxDayMissions: 0, maxConsecutive: 0, consecutiveRun: 0,
   completedWeekly: [], completedSpecial: [], unlockedAchievements: [],
   earlyBird: false, trioPerfect: false,
-  todayCategories: [], moedas: 0
+  todayCategories: []
 };
 
 let state = { ...DEFAULT_STATE };
-let currentUser = null; 
-
-// Variáveis globais para os seletores de navegação de abas
-let currentTab = 'home';
-let missionSubTab = 'daily';
-let rankingSubTab = 'regional';
-
-// Variáveis globais de controle da execução de missões
-let activeMission = null;
-let currentSet = 1;
-let currentReps = 0;
-let timerInterval = null;
-let restInterval = null;
-let restRemaining = 30;
 
 // ========================================================
-// CONTROLE DE SESSÃO E AUTENTICAÇÃO
+// CONTROLE DE SESSÃO E AUTENTICAÇÃO (NOVO)
 // ========================================================
 
+// Monitora se o usuário está logado ou deslogado automaticamente
 supabase.auth.onAuthStateChange(async (event, session) => {
   const authContainer = document.getElementById('auth-container');
   const userBar = document.getElementById('user-bar');
   const userDisplayName = document.getElementById('user-display-name');
 
   if (session) {
-    currentUser = session.user;
+    // Se o usuário está logado, esconde a tela de login e mostra a barra do usuário
     if (authContainer) authContainer.style.display = 'none';
     if (userBar) userBar.style.display = 'flex';
     if (userDisplayName) userDisplayName.textContent = session.user.email;
     
+    // Carrega o progresso direto do banco de dados (tabela profiles)
     await loadState(session.user);
   } else {
-    currentUser = null;
+    // Se deslogou, mostra a tela de login e esconde a barra
     if (authContainer) authContainer.style.display = 'block';
     if (userBar) userBar.style.display = 'none';
     
+    // Reseta o jogo para o estado inicial padrão
     state = { ...DEFAULT_STATE };
-    switchTab('home'); 
+    if (typeof render === 'function') render();
   }
 });
 
+// Escutadores dos botões da tela de login
+document.getElementById('btn-login')?.addEventListener('click', async () => {
+  const email = document.getElementById('auth-email').value;
+  const password = document.getElementById('auth-password').value;
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) alert("Erro ao entrar: " + error.message);
+});
+
+document.getElementById('btn-register')?.addEventListener('click', async () => {
+  const email = document.getElementById('auth-email').value;
+  const password = document.getElementById('auth-password').value;
+  const { error } = await supabase.auth.signUp({ email, password });
+  
+  if (error) {
+    mostrarModalQuestStuff("Erro ao cadastrar: " + error.message);
+  } else {
+    // Chama o seu novo modal idêntico ao da foto!
+    mostrarModalQuestStuff("Cadastro realizado com sucesso! Divirta-se no Quest Stuff.");
+  }
+});
+
+document.getElementById('btn-logout')?.addEventListener('click', async () => {
+  const { error } = await supabase.auth.signOut();
+  if (error) alert("Erro ao sair: " + error.message);
+});
 // ========================================================
-// SINCRONIZAÇÃO ONLINE (PROFILES & PROGRESS)
+// SINCRONIZAÇÃO ONLINE CORRIGIDA (PROFILES & PROGRESS)
 // ========================================================
 
 async function loadState(user) {
@@ -173,9 +184,9 @@ async function loadState(user) {
       .from('profiles')
       .select('*')
       .eq('id', user.id)
-      .maybeSingle(); // Modificado para evitar erros PGRST116 redundantes na v2
+      .single();
 
-    if (!profile) {
+    if (error && error.code === 'PGRST116') {
       const novoPerfil = {
         id: user.id,
         nome: user.email.split('@')[0],
@@ -185,11 +196,7 @@ async function loadState(user) {
         streak: 0,
         total_missions: 0,
         max_day_missions: 0,
-        last_training_date: null,
-        total_flexoes: 0,
-        total_agacham: 0,
-        total_prancha: 0,
-        unlocked_achievements: []
+        last_training_date: null
       };
 
       const { error: insertError } = await supabase
@@ -202,6 +209,7 @@ async function loadState(user) {
       throw error;
     }
 
+    // CARREGANDO TODOS OS DADOS CORRETAMENTE DO SUPABASE
     state.xp = profile.xp || 0;
     state.level = profile.nivel || 1;
     state.moedas = profile.moedas || 0;
@@ -209,42 +217,36 @@ async function loadState(user) {
     state.totalMissions = profile.total_missions || 0;
     state.maxDayMissions = profile.max_day_missions || 0;
     state.lastTrainingDate = profile.last_training_date || null;
-    state.totalFlexoes = profile.total_flexoes || 0;
-    state.totalAgacham = profile.total_agacham || 0;
-    state.totalPrancha = profile.total_prancha || 0;
-    state.unlockedAchievements = profile.unlocked_achievements || [];
 
     checkDayReset();
-    renderTab(currentTab);
+    if (typeof render === 'function') render();
+    if (typeof renderTab === 'function') renderTab(currentTab);
 
   } catch (e) {
     console.error("Erro ao carregar dados do Supabase, usando local:", e);
     const saved = localStorage.getItem('fitnessRPG_state');
     if (saved) state = { ...DEFAULT_STATE, ...JSON.parse(saved) };
-    renderTab(currentTab);
   }
 }
 
 async function saveState() {
   try {
+    const { data: { user } } = await supabase.auth.getUser();
     localStorage.setItem('fitnessRPG_state', JSON.stringify(state));
 
-    if (currentUser) {
+    if (user) {
+      // SALVANDO TODAS AS VARIÁVEIS NA NUVEM PARA EVITAR BUGS DE CONTAGEM
       await supabase
         .from('profiles')
         .upsert({
-          id: currentUser.id,
+          id: user.id,
           xp: state.xp,
           nivel: state.level,
           moedas: state.moedas || 0,
           streak: state.streak || 0,
           total_missions: state.totalMissions || 0,
           max_day_missions: state.maxDayMissions || 0,
-          last_training_date: state.lastTrainingDate,
-          total_flexoes: state.totalFlexoes,
-          total_agacham: state.totalAgacham,
-          total_prancha: state.totalPrancha,
-          unlocked_achievements: state.unlockedAchievements
+          last_training_date: state.lastTrainingDate
         });
     }
   } catch (e) {
@@ -252,13 +254,15 @@ async function saveState() {
   }
 }
 
+// Nova função para quando você quiser salvar uma conquista nova do usuário
 async function registrarConquistaOnline(nomeConquista) {
   try {
-    if (currentUser) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
       await supabase
         .from('achievements')
         .insert([{
-          user_id: currentUser.id,
+          user_id: user.id,
           conquista: nomeConquista,
           data: new Date().toISOString()
         }]);
@@ -272,6 +276,7 @@ function checkDayReset() {
   const today = new Date().toDateString();
   if (state.lastTrainingDate !== today) {
     if (state.completedToday.length > 0) {
+      // Was training yesterday
       const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
       if (state.lastTrainingDate === yesterday.toDateString()) {
         state.streak = (state.streak || 0) + 1;
@@ -293,7 +298,6 @@ function checkDayReset() {
 function xpForLevel(lv) {
   return Math.floor(100 * Math.pow(lv, 1.5));
 }
-
 function addXP(amount) {
   state.xp += amount;
   state.totalXP += amount;
@@ -313,7 +317,146 @@ function scaledTarget(ex) {
   return Math.floor(ex.base + range * factor);
 }
 
+// ===== SVG FIGURES =====
+function svgFigure(pose, mColor) {
+  const figures = {
+    pushup: `<svg viewBox="0 0 200 160" class="figure-svg" width="200" height="160">
+      <text x="100" y="18" text-anchor="middle" font-size="11" fill="#64748b">Mantenha o corpo reto!</text>
+      <g style="animation:pushup 2s ease-in-out infinite">
+        <circle cx="100" cy="50" r="14" fill="#E2E8F0"/>
+        <line x1="100" y1="64" x2="100" y2="100" stroke="#E2E8F0" stroke-width="5"/>
+        <line x1="100" y1="78" x2="65" y2="95" stroke="${mColor}" stroke-width="5" stroke-linecap="round"/>
+        <line x1="100" y1="78" x2="135" y2="95" stroke="${mColor}" stroke-width="5" stroke-linecap="round"/>
+        <line x1="65" y1="95" x2="58" y2="115" stroke="${mColor}" stroke-width="4" stroke-linecap="round"/>
+        <line x1="135" y1="95" x2="142" y2="115" stroke="${mColor}" stroke-width="4" stroke-linecap="round"/>
+        <line x1="100" y1="100" x2="80" y2="130" stroke="#E2E8F0" stroke-width="5"/>
+        <line x1="100" y1="100" x2="120" y2="130" stroke="#E2E8F0" stroke-width="5"/>
+        <circle cx="80" cy="133" r="5" fill="#E2E8F0"/>
+        <circle cx="120" cy="133" r="5" fill="#E2E8F0"/>
+      </g>
+      <text x="100" y="155" text-anchor="middle" font-size="10" fill="${mColor}" font-weight="bold">Peito · Tríceps · Ombros</text>
+    </svg>`,
+    squat: `<svg viewBox="0 0 200 170" class="figure-svg" width="200" height="170">
+      <text x="100" y="18" text-anchor="middle" font-size="11" fill="#64748b">Joelhos alinhados com os pés!</text>
+      <g style="animation:squat 2s ease-in-out infinite">
+        <circle cx="100" cy="45" r="14" fill="#E2E8F0"/>
+        <line x1="100" y1="59" x2="100" y2="95" stroke="#E2E8F0" stroke-width="5"/>
+        <line x1="100" y1="75" x2="72" y2="90" stroke="#E2E8F0" stroke-width="5" stroke-linecap="round"/>
+        <line x1="100" y1="75" x2="128" y2="90" stroke="#E2E8F0" stroke-width="5" stroke-linecap="round"/>
+        <line x1="100" y1="95" x2="78" y2="125" stroke="${mColor}" stroke-width="5" stroke-linecap="round"/>
+        <line x1="100" y1="95" x2="122" y2="125" stroke="${mColor}" stroke-width="5" stroke-linecap="round"/>
+        <line x1="78" y1="125" x2="68" y2="150" stroke="${mColor}" stroke-width="5" stroke-linecap="round"/>
+        <line x1="122" y1="125" x2="132" y2="150" stroke="${mColor}" stroke-width="5" stroke-linecap="round"/>
+        <circle cx="68" cy="153" r="5" fill="#E2E8F0"/>
+        <circle cx="132" cy="153" r="5" fill="#E2E8F0"/>
+      </g>
+      <text x="100" y="168" text-anchor="middle" font-size="10" fill="${mColor}" font-weight="bold">Quadríceps · Glúteos</text>
+    </svg>`,
+    plank: `<svg viewBox="0 0 220 130" class="figure-svg" width="220" height="130">
+      <text x="110" y="18" text-anchor="middle" font-size="11" fill="#64748b">Corpo reto como uma prancha!</text>
+      <g style="animation:plankPulse 2s ease-in-out infinite">
+        <circle cx="170" cy="55" r="14" fill="#E2E8F0"/>
+        <line x1="156" y1="55" x2="55" y2="75" stroke="${mColor}" stroke-width="6" stroke-linecap="round"/>
+        <line x1="115" y1="65" x2="100" y2="90" stroke="#E2E8F0" stroke-width="5"/>
+        <line x1="85" y1="70" x2="70" y2="95" stroke="#E2E8F0" stroke-width="5"/>
+        <line x1="55" y1="75" x2="45" y2="100" stroke="#E2E8F0" stroke-width="5"/>
+        <circle cx="45" cy="103" r="5" fill="#E2E8F0"/>
+        <circle cx="100" cy="93" r="5" fill="#E2E8F0"/>
+      </g>
+      <text x="110" y="125" text-anchor="middle" font-size="10" fill="${mColor}" font-weight="bold">Core · Abdômen · Lombar</text>
+    </svg>`,
+    jumpingjack: `<svg viewBox="0 0 200 180" class="figure-svg" width="200" height="180">
+      <text x="100" y="18" text-anchor="middle" font-size="11" fill="#64748b">Ritmo constante!</text>
+      <circle cx="100" cy="42" r="14" fill="#E2E8F0"/>
+      <line x1="100" y1="56" x2="100" y2="105" stroke="#E2E8F0" stroke-width="5"/>
+      <g style="animation:jjArms 1s ease-in-out infinite">
+        <line x1="100" y1="72" x2="58" y2="55" stroke="${mColor}" stroke-width="5" stroke-linecap="round"/>
+        <line x1="100" y1="72" x2="142" y2="55" stroke="${mColor}" stroke-width="5" stroke-linecap="round"/>
+      </g>
+      <g style="animation:jjLegs 1s ease-in-out infinite">
+        <line x1="100" y1="105" x2="72" y2="145" stroke="${mColor}" stroke-width="5" stroke-linecap="round"/>
+        <line x1="100" y1="105" x2="128" y2="145" stroke="${mColor}" stroke-width="5" stroke-linecap="round"/>
+        <circle cx="72" cy="148" r="5" fill="#E2E8F0"/>
+        <circle cx="128" cy="148" r="5" fill="#E2E8F0"/>
+      </g>
+      <text x="100" y="170" text-anchor="middle" font-size="10" fill="${mColor}" font-weight="bold">Corpo Todo · Cardio</text>
+    </svg>`,
+    crunch: `<svg viewBox="0 0 220 150" class="figure-svg" width="220" height="150">
+      <text x="110" y="18" text-anchor="middle" font-size="11" fill="#64748b">Foque no abdômen!</text>
+      <g style="animation:crunchRotate 2s ease-in-out infinite; transform-origin: 130px 90px">
+        <circle cx="165" cy="70" r="14" fill="#E2E8F0"/>
+        <line x1="155" y1="82" x2="110" y2="95" stroke="${mColor}" stroke-width="6" stroke-linecap="round"/>
+        <line x1="165" y1="75" x2="148" y2="62" stroke="#E2E8F0" stroke-width="4"/>
+        <line x1="165" y1="75" x2="178" y2="62" stroke="#E2E8F0" stroke-width="4"/>
+      </g>
+      <line x1="110" y1="95" x2="50" y2="100" stroke="#E2E8F0" stroke-width="6" stroke-linecap="round"/>
+      <line x1="80" y1="98" x2="65" y2="125" stroke="#E2E8F0" stroke-width="5"/>
+      <line x1="60" y1="99" x2="45" y2="125" stroke="#E2E8F0" stroke-width="5"/>
+      <circle cx="65" cy="128" r="5" fill="#E2E8F0"/>
+      <circle cx="45" cy="128" r="5" fill="#E2E8F0"/>
+      <text x="110" y="145" text-anchor="middle" font-size="10" fill="${mColor}" font-weight="bold">Abdômen · Core</text>
+    </svg>`,
+    lunge: `<svg viewBox="0 0 200 180" class="figure-svg" width="200" height="180">
+      <text x="100" y="18" text-anchor="middle" font-size="11" fill="#64748b">Joelho traseiro próximo ao chão!</text>
+      <g style="animation:lungeDown 2s ease-in-out infinite">
+        <circle cx="100" cy="45" r="14" fill="#E2E8F0"/>
+        <line x1="100" y1="59" x2="100" y2="100" stroke="#E2E8F0" stroke-width="5"/>
+        <line x1="100" y1="75" x2="72" y2="88" stroke="#E2E8F0" stroke-width="5" stroke-linecap="round"/>
+        <line x1="100" y1="75" x2="128" y2="88" stroke="#E2E8F0" stroke-width="5" stroke-linecap="round"/>
+        <line x1="100" y1="100" x2="125" y2="135" stroke="${mColor}" stroke-width="5" stroke-linecap="round"/>
+        <line x1="125" y1="135" x2="135" y2="160" stroke="${mColor}" stroke-width="5" stroke-linecap="round"/>
+        <line x1="100" y1="100" x2="75" y2="120" stroke="${mColor}" stroke-width="5" stroke-linecap="round"/>
+        <line x1="75" y1="120" x2="60" y2="155" stroke="#E2E8F0" stroke-width="5" stroke-linecap="round"/>
+        <circle cx="135" cy="163" r="5" fill="#E2E8F0"/>
+        <circle cx="60" cy="158" r="5" fill="#E2E8F0"/>
+      </g>
+      <text x="100" y="176" text-anchor="middle" font-size="10" fill="${mColor}" font-weight="bold">Quadríceps · Glúteos · Isquiotibial</text>
+    </svg>`,
+    glute: `<svg viewBox="0 0 220 150" class="figure-svg" width="220" height="150">
+      <text x="110" y="18" text-anchor="middle" font-size="11" fill="#64748b">Contraia os glúteos no topo!</text>
+      <g style="animation:gluteUp 2s ease-in-out infinite">
+        <line x1="50" y1="95" x2="170" y2="90" stroke="#E2E8F0" stroke-width="6" stroke-linecap="round"/>
+        <circle cx="170" cy="90" r="14" fill="#E2E8F0"/>
+        <rect x="78" y="80" width="60" height="20" rx="8" fill="${mColor}"/>
+        <line x1="80" y1="95" x2="65" y2="125" stroke="#E2E8F0" stroke-width="5"/>
+        <line x1="110" y1="95" x2="110" y2="128" stroke="#E2E8F0" stroke-width="5"/>
+        <circle cx="65" cy="128" r="5" fill="#E2E8F0"/>
+        <circle cx="110" cy="131" r="5" fill="#E2E8F0"/>
+        <line x1="50" y1="95" x2="38" y2="115" stroke="#E2E8F0" stroke-width="4"/>
+        <circle cx="38" cy="118" r="5" fill="#E2E8F0"/>
+      </g>
+      <text x="110" y="147" text-anchor="middle" font-size="10" fill="${mColor}" font-weight="bold">Glúteos · Isquiotibial · Lombar</text>
+    </svg>`,
+    dip: `<svg viewBox="0 0 220 170" class="figure-svg" width="220" height="170">
+      <text x="110" y="18" text-anchor="middle" font-size="11" fill="#64748b">Use os tríceps para subir!</text>
+      <rect x="30" y="110" width="35" height="50" rx="4" fill="#1E2040" stroke="#6B7280" stroke-width="2"/>
+      <rect x="155" y="110" width="35" height="50" rx="4" fill="#1E2040" stroke="#6B7280" stroke-width="2"/>
+      <g style="animation:dipDown 2s ease-in-out infinite">
+        <circle cx="110" cy="50" r="14" fill="#E2E8F0"/>
+        <line x1="110" y1="64" x2="110" y2="100" stroke="#E2E8F0" stroke-width="5"/>
+        <line x1="110" y1="78" x2="65" y2="100" stroke="${mColor}" stroke-width="5" stroke-linecap="round"/>
+        <line x1="110" y1="78" x2="155" y2="100" stroke="${mColor}" stroke-width="5" stroke-linecap="round"/>
+        <line x1="65" y1="100" x2="65" y2="115" stroke="${mColor}" stroke-width="5"/>
+        <line x1="155" y1="100" x2="155" y2="115" stroke="${mColor}" stroke-width="5"/>
+        <line x1="110" y1="100" x2="88" y2="135" stroke="#E2E8F0" stroke-width="5"/>
+        <line x1="110" y1="100" x2="132" y2="135" stroke="#E2E8F0" stroke-width="5"/>
+        <circle cx="88" cy="138" r="5" fill="#E2E8F0"/>
+        <circle cx="132" cy="138" r="5" fill="#E2E8F0"/>
+      </g>
+      <text x="110" y="167" text-anchor="middle" font-size="10" fill="${mColor}" font-weight="bold">Tríceps · Ombros</text>
+    </svg>`
+  };
+  return figures[pose] || figures.pushup;
+}
+
 // ===== MISSION LOGIC =====
+let activeMission = null;
+let currentSet = 1;
+let currentReps = 0;
+let timerInterval = null;
+let restInterval = null;
+let restRemaining = 30;
+
 function startMission(id) {
   const ex = EXERCISES.find(e => e.id === id);
   if (!ex) return;
@@ -326,8 +469,9 @@ function openMissionScreen() {
   const ex = activeMission;
   const target = ex.target;
   const el = document.getElementById('mission-screen');
-  if (!el) return;
-  
+  el.innerHTML = '';
+  const mc = document.getElementById('mission-content');
+
   el.innerHTML = `
     <div style="padding-bottom:30px">
       <div class="mission-screen-header">
@@ -337,7 +481,7 @@ function openMissionScreen() {
           <div class="mission-screen-series">Série ${currentSet} de ${ex.sets}</div>
         </div>
       </div>
-      <div class="figure-container">
+                  <div class="figure-container">
         <img src="./${ex.pose}.png" class="exercise-image" alt="${ex.name}">
       </div>
       <div class="muscle-tags">
@@ -377,37 +521,10 @@ function openMissionScreen() {
   if (ex.type === 'timer') updateRing(0, target);
 }
 
-// Expondo funções globais usadas no onclick inline do HTML gerado dinamicamente
-window.closeMissionScreen = function() {
+function closeMissionScreen() {
   clearInterval(timerInterval);
-  document.getElementById('mission-screen')?.classList.remove('open');
-};
-
-window.addRep = function() {
-  currentReps++;
-  updateRing(currentReps, activeMission.target);
-  if (currentReps >= activeMission.target) finishSet();
-};
-
-window.startTimer = function() {
-  const btn = document.getElementById('timer-start-btn');
-  if (btn) btn.style.display = 'none';
-  let elapsed = 0;
-  const total = activeMission.target;
-  timerInterval = setInterval(() => {
-    elapsed++;
-    updateRing(elapsed, total);
-    if (elapsed >= total) {
-      clearInterval(timerInterval);
-      finishSet();
-    }
-  }, 1000);
-};
-
-window.skipRest = function() {
-  clearInterval(restInterval);
-  nextSet();
-};
+  document.getElementById('mission-screen').classList.remove('open');
+}
 
 function updateRing(current, total) {
   const ring = document.getElementById('prog-ring');
@@ -423,6 +540,27 @@ function updateRing(current, total) {
   }
 }
 
+function addRep() {
+  currentReps++;
+  updateRing(currentReps, activeMission.target);
+  if (currentReps >= activeMission.target) finishSet();
+}
+
+function startTimer() {
+  const btn = document.getElementById('timer-start-btn');
+  if (btn) btn.style.display = 'none';
+  let elapsed = 0;
+  const total = activeMission.target;
+  timerInterval = setInterval(() => {
+    elapsed++;
+    updateRing(elapsed, total);
+    if (elapsed >= total) {
+      clearInterval(timerInterval);
+      finishSet();
+    }
+  }, 1000);
+}
+
 function finishSet() {
   clearInterval(timerInterval);
   if (currentSet < activeMission.sets) {
@@ -436,7 +574,6 @@ function finishSet() {
 function openRestScreen() {
   restRemaining = 30;
   const rs = document.getElementById('rest-screen');
-  if(!rs) return;
   rs.classList.add('show');
   updateRestRing(30);
   restInterval = setInterval(() => {
@@ -458,16 +595,22 @@ function updateRestRing(remaining) {
   count.textContent = remaining;
 }
 
+function skipRest() {
+  clearInterval(restInterval);
+  nextSet();
+}
+
 function nextSet() {
-  document.getElementById('rest-screen')?.classList.remove('show');
+  document.getElementById('rest-screen').classList.remove('show');
   currentReps = 0;
   openMissionScreen();
 }
 
 function completeMission() {
   const ex = activeMission;
-  window.closeMissionScreen();
+  closeMissionScreen();
 
+  // Update state
   const today = new Date().toDateString();
   const hour = new Date().getHours();
 
@@ -487,18 +630,22 @@ function completeMission() {
   }
   if (state.todayCategories.length >= 3) state.trioPerfect = true;
 
+  // Exercise-specific stats
   if (ex.id === 'd1') state.totalFlexoes += ex.target;
   if (ex.id === 'd2') state.totalAgacham += ex.target;
   if (ex.id === 'd3') state.totalPrancha += ex.target;
   if (ex.cat === 'cardio') state.weekCardio++;
   if (ex.id === 'd1') state.weekFlexoes += ex.target;
 
+  // XP
   const prevLevel = state.level;
   const didLevel = addXP(ex.xp);
 
+  // Check weekly/special missions
   checkWeeklyMissions();
   checkSpecialMissions();
 
+  // Check streak
   state.weekDaysTraining = Math.min(7, (state.weekDaysTraining || 0) + (state.completedToday.length === 1 ? 1 : 0));
   if (state.completedToday.length >= 3) {
     state.weekConsistency = Math.min(3, (state.weekConsistency || 0) + 1);
@@ -506,6 +653,7 @@ function completeMission() {
 
   saveState();
 
+  // Feedback
   showToast(`✅ ${ex.name} completo! +${ex.xp} XP`, 'success');
   spawnParticles();
 
@@ -513,6 +661,7 @@ function completeMission() {
     setTimeout(() => showLevelUp(state.level), 800);
   }
 
+  // Check achievements
   const newAchs = checkAchievements();
   if (newAchs.length > 0) {
     registrarConquistaOnline(newAchs[0].title);
@@ -559,7 +708,6 @@ function checkAchievements() {
 let toastTimeout = null;
 function showToast(msg, type = 'default') {
   const el = document.getElementById('toast');
-  if(!el) return;
   el.innerHTML = `<div class="toast-inner ${type}">${msg}</div>`;
   if (toastTimeout) clearTimeout(toastTimeout);
   toastTimeout = setTimeout(() => { el.innerHTML = ''; }, 3000);
@@ -567,7 +715,6 @@ function showToast(msg, type = 'default') {
 
 function spawnParticles() {
   const container = document.getElementById('particles');
-  if(!container) return;
   const colors = ['#7C3AED', '#F59E0B', '#10B981', '#EF4444', '#00AAFF', '#FF6B6B', '#A78BFA'];
   for (let i = 0; i < 18; i++) {
     const p = document.createElement('div');
@@ -589,24 +736,21 @@ function spawnParticles() {
 
 function showLevelUp(level) {
   const el = document.getElementById('levelup-overlay');
-  const num = document.getElementById('levelup-num');
-  if(num) num.textContent = level;
-  el?.classList.add('show');
+  document.getElementById('levelup-num').textContent = level;
+  el.classList.add('show');
   spawnParticles();
 }
 
-window.closeLevelUp = function() {
-  document.getElementById('levelup-overlay')?.classList.remove('show');
-};
+function closeLevelUp() {
+  document.getElementById('levelup-overlay').classList.remove('show');
+}
 
 function showAchievementFlash(ach) {
   const el = document.getElementById('ach-flash');
-  const icon = document.getElementById('ach-flash-icon');
-  const title = document.getElementById('ach-flash-title');
-  if(icon) icon.textContent = ach.icon;
-  if(title) title.textContent = ach.title;
-  el?.classList.add('show');
-  setTimeout(() => el?.classList.remove('show'), 3000);
+  document.getElementById('ach-flash-icon').textContent = ach.icon;
+  document.getElementById('ach-flash-title').textContent = ach.title;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3000);
 }
 
 // ===== RANKING DATA =====
@@ -651,15 +795,18 @@ function getRankingPlayers(scope) {
 }
 
 // ===== RENDERING =====
-window.switchTab = function(tab) {
+let currentTab = 'home';
+let missionSubTab = 'daily';
+let rankingSubTab = 'regional';
+
+function switchTab(tab) {
   currentTab = tab;
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   renderTab(tab);
-};
+}
 
 function renderTab(tab) {
   const content = document.getElementById('content');
-  if(!content) return;
   switch (tab) {
     case 'home': content.innerHTML = renderHome(); break;
     case 'missions': content.innerHTML = renderMissions(); break;
@@ -818,15 +965,15 @@ function renderSpecialMissions() {
   }).join('');
 }
 
-window.toggleMissionCard = function(id) {
+function toggleMissionCard(id) {
   const el = document.getElementById(id);
   if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
-};
+}
 
-window.switchMissionTab = function(tab) {
+function switchMissionTab(tab) {
   missionSubTab = tab;
   renderTab('missions');
-};
+}
 
 function renderAchievements() {
   const unlocked = state.unlockedAchievements.length;
@@ -896,10 +1043,10 @@ function renderRanking() {
   `;
 }
 
-window.switchRankingTab = function(tab) {
+function switchRankingTab(tab) {
   rankingSubTab = tab;
   renderTab('ranking');
-};
+}
 
 function renderProfile() {
   const xpNeeded = xpForLevel(state.level);
@@ -946,7 +1093,7 @@ function renderProfile() {
   `;
 }
 
-window.resetGame = function() {
+function resetGame() {
   if (confirm('Resetar todo o progresso? Esta ação não pode ser desfeita.')) {
     localStorage.removeItem('fitnessRPG_state');
     state = { ...DEFAULT_STATE };
@@ -954,87 +1101,20 @@ window.resetGame = function() {
     renderTab(currentTab);
     showToast('🔄 Progresso resetado!');
   }
-};
-
-// ========================================================
-// FUNÇÕES DE AUTENTICAÇÃO E MODAL
-// ========================================================
-
-async function handleLogin() {
-  const email = document.getElementById('auth-email')?.value;
-  const password = document.getElementById('auth-password')?.value;
-  if(!email || !password) return alert("Preencha todos os campos!");
-
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  
-  if (error) {
-    mostrarModalQuestStuff('Erro ao entrar: ' + error.message);
-  } else if (data?.user) {
-    await loadState(data.user);
-    renderTab('home');
-  }
 }
-
-async function handleSignUp() {
-  try {
-    const email = document.getElementById('auth-email')?.value;
-    const password = document.getElementById('auth-password')?.value;
-    if(!email || !password) return alert("Preencha todos os campos!");
-
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password
-    });
-
-    if (error) {
-      mostrarModalQuestStuff("Erro no cadastro: " + error.message);
-    } else if (data?.user) {
-      mostrarModalQuestStuff("Cadastro realizado! Caso a confirmação de e-mail esteja ativa, verifique sua caixa de entrada.");
-    }
-  } catch (erro) {
-    mostrarModalQuestStuff("ERRO: " + erro.message);
-  }
-}
-
-async function handleLogout() {
-  const { error } = await supabase.auth.signOut();
-  if (error) alert("Erro ao sair: " + error.message);
-}
-
-function mostrarModalQuestStuff(mensagem) {
-  const modal = document.getElementById('custom-modal');
-  const modalMessage = document.getElementById('modal-message');
-  const modalCloseBtn = document.getElementById('modal-close-btn');
-
-  if (modal && modalMessage) {
-    modalMessage.innerText = mensaje;
-    modal.style.display = 'flex'; 
-
-    if(modalCloseBtn) {
-      modalCloseBtn.onclick = function() {
-        modal.style.display = 'none';
-      };
-    }
-  }
-}
-
-// Expondo de forma explícita para os handlers do HTML
-window.startMission = startMission;
 
 // ===== INIT =====
 function init() {
-  // Conectar escutadores de autenticação de forma segura após o DOM carregar
-  document.getElementById('btn-login')?.addEventListener('click', handleLogin);
-  document.getElementById('btn-register')?.addEventListener('click', handleSignUp);
-  document.getElementById('btn-logout')?.addEventListener('click', handleLogout);
+  // Chamada removida daqui, pois o supabase.auth.onAuthStateChange já cuida de chamar o loadState(session.user) automaticamente!
 
+  // Register service worker
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
   }
 
+  // Offline detection
   function updateOnline() {
     const bar = document.getElementById('offline-bar');
-    if (!bar) return;
     if (!navigator.onLine) bar.classList.add('show');
     else bar.classList.remove('show');
   }
@@ -1042,6 +1122,7 @@ function init() {
   window.addEventListener('offline', updateOnline);
   updateOnline();
 
+  // Hide splash and show app
   const splash = document.getElementById('splash');
   const app = document.getElementById('app');
 
@@ -1054,3 +1135,47 @@ function init() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+// ===== FUNÇÕES DE AUTENTICAÇÃO CORRIGIDAS =====
+async function handleLogin() {
+  const email = document.getElementById('auth-email').value;
+  const password = document.getElementById('auth-password').value;
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  
+  if (error) {
+    alert('Erro ao entrar: ' + error.message);
+  } else if (data?.user) {
+    // Carrega os dados direto antes de qualquer coisa para firmar o login
+    await loadState(data.user);
+    renderTab('home');
+  }
+}
+
+async function handleSignUp() {
+  const email = document.getElementById('auth-email').value;
+  const password = document.getElementById('auth-password').value;
+  const { error } = await supabase.auth.signUp({ email, password });
+  
+  if (error) {
+    alert('Erro ao cadastrar: ' + error.message);
+  } else {
+    mostrarModalQuestStuff('Conta criada com sucesso! Faça login para começar a jogar.');
+  }
+}
+
+// Função para mostrar o modal estilo Quest Stuff
+function mostrarModalQuestStuff(mensagem) {
+  const modal = document.getElementById('custom-modal');
+  const modalMessage = document.getElementById('modal-message');
+  const modalCloseBtn = document.getElementById('modal-close-btn');
+
+  if (modal && modalMessage) {
+    modalMessage.innerText = mensaje;
+    modal.style.display = 'flex'; // Abre o modal centralizado
+
+    // Configura o botão para fechar quando for clicado
+    modalCloseBtn.onclick = function() {
+      modal.style.display = 'none';
+    };
+  }
+}
